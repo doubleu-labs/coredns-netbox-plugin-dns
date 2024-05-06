@@ -1,0 +1,209 @@
+[
+    {
+        "name": "example.com",
+        "nameservers": [
+            {
+                "name": "dns01.example.com"
+            },
+            {
+                "name": "dns02.example.com"
+            }
+        ],
+        "default_ttl": 3600,
+        "soa_expire": 2419200,
+        "soa_minimum": 3600,
+        "soa_mname": {
+            "name": "dns01.example.com"
+        },
+        "soa_ttl": 86400,
+        "soa_refresh": 43200,
+        "soa_retry": 7200,
+        "soa_rname": "admin.example.com",
+        "soa_serial_auto": false,
+        "soa_serial": 1
+    },
+    {
+        "name": "0.0.10.in-addr.arpa",
+        "nameservers": [
+            {
+                "name": "dns01.example.com"
+            },
+            {
+                "name": "dns02.example.com"
+            }
+        ],
+        "default_ttl": 3600,
+        "soa_expire": 2419200,
+        "soa_minimum": 3600,
+        "soa_mname": {
+            "name": "dns01.example.com"
+        },
+        "soa_ttl": 86400,
+        "soa_refresh": 43200,
+        "soa_retry": 7200,
+        "soa_rname": "admin.example.com",
+        "soa_serial_auto": false,
+        "soa_serial": 1
+    },
+    {
+        "name": "1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa",
+        "nameservers": [
+            {
+                "name": "dns01.example.com"
+            },
+            {
+                "name": "dns02.example.com"
+            }
+        ],
+        "default_ttl": 3600,
+        "soa_expire": 2419200,
+        "soa_minimum": 3600,
+        "soa_mname": {
+            "name": "dns01.example.com"
+        },
+        "soa_ttl": 86400,
+        "soa_refresh": 43200,
+        "soa_retry": 7200,
+        "soa_rname": "admin.example.com",
+        "soa_serial_auto": false,
+        "soa_serial": 1
+    },
+    {
+        "name": "sub.example.com",
+        "nameservers": [
+            {
+                "name": "dns01.example.com"
+            },
+            {
+                "name": "dns02.example.com"
+            }
+        ],
+        "default_ttl": 3600,
+        "soa_expire": 2419200,
+        "soa_minimum": 3600,
+        "soa_mname": {
+            "name": "dns01.example.com"
+        },
+        "soa_ttl": 86400,
+        "soa_refresh": 43200,
+        "soa_retry": 7200,
+        "soa_rname": "admin.example.com",
+        "soa_serial_auto": false,
+        "soa_serial": 1
+    },
+    {
+        "name": "1.0.10.in-addr.arpa",
+        "nameservers": [
+            {
+                "name": "dns01.example.com"
+            },
+            {
+                "name": "dns02.example.com"
+            }
+        ],
+        "default_ttl": 3600,
+        "soa_expire": 2419200,
+        "soa_minimum": 3600,
+        "soa_mname": {
+            "name": "dns01.example.com"
+        },
+        "soa_ttl": 86400,
+        "soa_refresh": 43200,
+        "soa_retry": 7200,
+        "soa_rname": "admin.example.com",
+        "soa_serial_auto": false,
+        "soa_serial": 1
+    },
+    {
+        "name": "2.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa",
+        "nameservers": [
+            {
+                "name": "dns01.example.com"
+            },
+            {
+                "name": "dns02.example.com"
+            }
+        ],
+        "default_ttl": 3600,
+        "soa_expire": 2419200,
+        "soa_minimum": 3600,
+        "soa_mname": {
+            "name": "dns01.example.com"
+        },
+        "soa_ttl": 86400,
+        "soa_refresh": 43200,
+        "soa_retry": 7200,
+        "soa_rname": "admin.example.com",
+        "soa_serial_auto": false,
+        "soa_serial": 1
+    },
+    {
+        "name": "subtwo.example.com",
+        "nameservers": [
+            {
+                "name": "dns01.example.com"
+            },
+            {
+                "name": "dns02.example.com"
+            }
+        ],
+        "default_ttl": 3600,
+        "soa_expire": 2419200,
+        "soa_minimum": 3600,
+        "soa_mname": {
+            "name": "dns01.example.com"
+        },
+        "soa_ttl": 86400,
+        "soa_refresh": 43200,
+        "soa_retry": 7200,
+        "soa_rname": "admin.example.com",
+        "soa_serial_auto": false,
+        "soa_serial": 1
+    },
+    {
+        "name": "2.0.10.in-addr.arpa",
+        "nameservers": [
+            {
+                "name": "dns01.example.com"
+            },
+            {
+                "name": "dns02.example.com"
+            }
+        ],
+        "default_ttl": 3600,
+        "soa_expire": 2419200,
+        "soa_minimum": 3600,
+        "soa_mname": {
+            "name": "dns01.example.com"
+        },
+        "soa_ttl": 86400,
+        "soa_refresh": 43200,
+        "soa_retry": 7200,
+        "soa_rname": "admin.example.com",
+        "soa_serial_auto": false,
+        "soa_serial": 1
+    },
+    {
+        "name": "3.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa",
+        "nameservers": [
+            {
+                "name": "dns01.example.com"
+            },
+            {
+                "name": "dns02.example.com"
+            }
+        ],
+        "default_ttl": 3600,
+        "soa_expire": 2419200,
+        "soa_minimum": 3600,
+        "soa_mname": {
+            "name": "dns01.example.com"
+        },
+        "soa_ttl": 86400,
+        "soa_refresh": 43200,
+        "soa_retry": 7200,
+        "soa_rname": "admin.example.com",
+        "soa_serial_auto": false,
+        "soa_serial": 1
+    }
+]

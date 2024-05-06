@@ -1,0 +1,80 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "[Start] Netbox test instance",
+            "type": "docker-compose",
+            "dockerCompose": {
+                "projectName": "coredns-netbox-plugin-dns",
+                "up": {
+                    "detached": true,
+                    "build": true,
+                },
+                "files": [
+                    "${workspaceFolder}/.testing/docker-compose.yml"
+                ]
+            }
+        },
+        {
+            "label": "[Stop] Netbox test instance",
+            "type": "docker-compose",
+            "dockerCompose": {
+                "projectName": "coredns-netbox-plugin-dns",
+                "down": {
+                    "removeVolumes": true
+                },
+                "files": [
+                    "${workspaceFolder}/.testing/docker-compose.yml"
+                ]
+            }
+        },
+        {
+            "label": "Go Coverage",
+            "type": "shell",
+            "command": "go",
+            "args": [
+                "test",
+                "-short",
+                "-coverprofile=${workspaceFolder}/coverage.out",
+                "./..."
+            ],
+            "options": {
+                "env": {
+                    "CGO_ENABLED": "0"
+                }
+            },
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": ".*"
+                }
+            }
+        },
+        {
+            "label": "Go View Coverage",
+            "type": "shell",
+            "linux": {
+                "command": "setsid",
+                "args": [
+                    "go",
+                    "tool",
+                    "cover",
+                    "-html=${workspaceFolder}/coverage.out"
+                ]
+            },
+            "windows": {
+                "command": "go",
+                "args": [
+                    "tool",
+                    "cover",
+                    "-html=${workspaceFolder}/coverage.out"
+                ]
+            },
+            "dependsOn": "Go Coverage",
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": ".*"
+                }
+            }
+        },
+    ]
+}

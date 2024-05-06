@@ -1,0 +1,250 @@
+[
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "A",
+        "name": "dns01",
+        "value": "10.0.0.10"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "AAAA",
+        "name": "dns01",
+        "value": "2001:db8:dead:beef::1:10"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "A",
+        "name": "dns02",
+        "value": "10.0.0.11"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "AAAA",
+        "name": "dns02",
+        "value": "2001:db8:dead:beef::1:11"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "A",
+        "name": "aservice",
+        "value": "10.0.0.12"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "AAAA",
+        "name": "aservice",
+        "value": "2001:db8:dead:beef::1:12"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "MX",
+        "name": "@",
+        "value": "10 mail.example.com"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "A",
+        "name": "mail",
+        "value": "10.0.0.13"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "AAAA",
+        "name": "mail",
+        "value": "2001:db8:dead:beef::1:13"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "TXT",
+        "name": "@",
+        "value": "v=spf1 ip4:10.0.0.13 ip6:2001:db8:dead:beef::1:13 a -all"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "TXT",
+        "name": "@",
+        "value": "v=DMARC1;p=none;sp=quarantine;pct=100;rua=admin@example.com;"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "TXT",
+        "name": "@",
+        "value": "\"some value\"\\r\\n\"another value\""
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "TXT",
+        "name": "@",
+        "value": "\"newline record\"\\n\"second value\""
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "TXT",
+        "name": "@",
+        "value": "\"my value\" \"second my value\" \"third my value\""
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "A",
+        "name": "puppet-server-a",
+        "value": "10.0.0.15"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "AAAA",
+        "name": "puppet-server-a",
+        "value": "2001:db8:dead:beef::1:15"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "SRV",
+        "name": "_x-puppet._tcp",
+        "value": "0 5 8140 puppet-server-a.example.com"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "A",
+        "name": "puppet-server-b",
+        "value": "10.0.0.16"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "AAAA",
+        "name": "puppet-server-b",
+        "value": "2001:db8:dead:beef::1:16"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "SRV",
+        "name": "_x-puppet._tcp",
+        "value": "0 5 8140 puppet-server-b.example.com"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "A",
+        "name": "web",
+        "value": "10.0.0.17"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "AAAA",
+        "name": "web",
+        "value": "2001:db8:dead:beef::1:17"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "CNAME",
+        "name": "www",
+        "value": "web.example.com"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "NS",
+        "name": "sub",
+        "value": "dns01.example.com"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "NS",
+        "name": "sub",
+        "value": "dns02.example.com"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "NS",
+        "name": "subtwo",
+        "value": "dns01.example.com"
+    },
+    {
+        "zone": {
+            "name": "example.com"
+        },
+        "type": "NS",
+        "name": "subtwo",
+        "value": "dns02.example.com"
+    },
+    {
+        "zone": {
+            "name": "sub.example.com"
+        },
+        "type": "A",
+        "name": "myservice",
+        "value": "10.0.1.10"
+    },
+    {
+        "zone": {
+            "name": "sub.example.com"
+        },
+        "type": "AAAA",
+        "name": "myservice",
+        "value": "2001:db8:dead:beef::2:10"
+    },
+    {
+        "zone": {
+            "name": "subtwo.example.com"
+        },
+        "type": "A",
+        "name": "myotherservice",
+        "value": "10.0.2.10"
+    },
+    {
+        "zone": {
+            "name": "subtwo.example.com"
+        },
+        "type": "AAAA",
+        "name": "myotherservice",
+        "value": "2001:db8:dead:beef::3:10"
+    }
+]

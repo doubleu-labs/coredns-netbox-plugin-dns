@@ -1,0 +1,8 @@
+[
+    {
+        "name": "dns01.example.com"
+    },
+    {
+        "name": "dns02.example.com"
+    }
+]
