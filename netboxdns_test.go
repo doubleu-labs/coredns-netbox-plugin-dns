@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/coredns/coredns/plugin/pkg/dnstest"
 	"github.com/coredns/coredns/plugin/test"
@@ -44,7 +45,7 @@ var netboxdnsPlugin NetboxDNS = NetboxDNS{
 	zones: []string{"."},
 	requestClient: &netbox.APIRequestClient{
 		Client: &http.Client{
-			Timeout: defaultHTTPClientTimeout,
+			Timeout: time.Second * 30,
 		},
 		NetboxURL: &url.URL{
 			Scheme: "http",
