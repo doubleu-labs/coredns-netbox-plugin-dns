@@ -103,7 +103,7 @@ func RunTestLookupCheckCNAME(t *testing.T, tc test.Case, resp *dns.Msg) bool {
 	if err := test.CNAMEOrder(resp); err != nil {
 		t.Errorf("cname response out of order")
 	}
-	if tc.Qtype == dns.TypeCNAME {
+	if tc.Qtype == dns.TypeCNAME || RunTestLookupContainsCNAME(resp) {
 		if err := test.Header(tc, resp); err != nil {
 			t.Error(err)
 		}
@@ -119,6 +119,16 @@ func RunTestLookupCheckCNAME(t *testing.T, tc test.Case, resp *dns.Msg) bool {
 		return false
 	}
 	return true
+}
+
+func RunTestLookupContainsCNAME(resp *dns.Msg) bool {
+	out := false
+	for _, rr := range resp.Answer {
+		if rr.Header().Rrtype == dns.TypeCNAME {
+			out = true
+		}
+	}
+	return out
 }
 
 var (
@@ -150,6 +160,12 @@ var (
 		exampledotcomNS1Record6,
 		exampledotcomNS2Record6,
 	}
+
+	webdotexampledotcomName        string = "web.example.com."
+	webdotexampledotcomRecordA     dns.RR = test.A("web.example.com. 3600 IN A 10.0.0.17")
+	webdotexampledotcomRecordAAAA  dns.RR = test.AAAA("web.example.com. 3600 IN AAAA 2001:db8:dead:beef::1:17")
+	wwwdotexampledotcomName        string = "www.example.com."
+	wwwdotexampledotcomRecordCNAME dns.RR = test.CNAME("www.example.com. 3600 IN CNAME web.example.com.")
 )
 
 var (
@@ -378,16 +394,23 @@ var (
 			},
 		},
 		{
-			Qname: "web.example.com.", Qtype: dns.TypeA,
+			Qname: webdotexampledotcomName, Qtype: dns.TypeA,
 			Answer: []dns.RR{
-				test.A("web.example.com. 3600 IN A 10.0.0.17"),
+				webdotexampledotcomRecordA,
 			},
 		},
 		{
-			Qname: "www.example.com.", Qtype: dns.TypeCNAME,
+			Qname: wwwdotexampledotcomName, Qtype: dns.TypeCNAME,
 			Answer: []dns.RR{
-				test.CNAME("www.example.com. 3600 IN CNAME web.example.com."),
-				test.A("web.example.com. 3600 IN A 10.0.0.17"),
+				wwwdotexampledotcomRecordCNAME,
+				webdotexampledotcomRecordA,
+			},
+		},
+		{
+			Qname: wwwdotexampledotcomName, Qtype: dns.TypeA,
+			Answer: []dns.RR{
+				wwwdotexampledotcomRecordCNAME,
+				webdotexampledotcomRecordA,
 			},
 		},
 		{
@@ -549,16 +572,23 @@ var (
 			},
 		},
 		{
-			Qname: "web.example.com.", Qtype: dns.TypeAAAA,
+			Qname: webdotexampledotcomName, Qtype: dns.TypeAAAA,
 			Answer: []dns.RR{
-				test.AAAA("web.example.com. 3600 IN AAAA 2001:db8:dead:beef::1:17"),
+				webdotexampledotcomRecordAAAA,
 			},
 		},
 		{
-			Qname: "www.example.com.", Qtype: dns.TypeCNAME,
+			Qname: wwwdotexampledotcomName, Qtype: dns.TypeCNAME,
 			Answer: []dns.RR{
-				test.CNAME("www.example.com. 3600 IN CNAME web.example.com."),
-				test.AAAA("web.example.com. 3600 IN AAAA 2001:db8:dead:beef::1:17"),
+				wwwdotexampledotcomRecordCNAME,
+				webdotexampledotcomRecordAAAA,
+			},
+		},
+		{
+			Qname: wwwdotexampledotcomName, Qtype: dns.TypeAAAA,
+			Answer: []dns.RR{
+				wwwdotexampledotcomRecordCNAME,
+				webdotexampledotcomRecordAAAA,
 			},
 		},
 		{
