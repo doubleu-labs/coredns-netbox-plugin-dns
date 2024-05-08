@@ -34,6 +34,7 @@ func (netboxdns *NetboxDNS) lookup(
 		return nil, err
 	}
 	if zone == nil {
+		logger.Debugf("no zone matching %q", name)
 		return &lookupResponse{LookupResult: lookupNameError}, nil
 	}
 
@@ -44,6 +45,11 @@ func (netboxdns *NetboxDNS) lookup(
 			return nil, err
 		}
 		if originResponse != nil {
+			logger.Debugf(
+				"found origin records for [%s] %q",
+				dns.TypeToString[qtype],
+				name,
+			)
 			return originResponse, nil
 		}
 	}
@@ -54,6 +60,11 @@ func (netboxdns *NetboxDNS) lookup(
 		return nil, err
 	}
 	if direct != nil {
+		logger.Debugf(
+			"found records for [%s] %q",
+			dns.TypeToString[qtype],
+			name,
+		)
 		return direct, nil
 	}
 
@@ -64,9 +75,11 @@ func (netboxdns *NetboxDNS) lookup(
 		return nil, err
 	}
 	if delegate != nil {
+		logger.Debugf("found delegate zone records for %q", name)
 		return delegate, nil
 	}
 
+	logger.Debugf("no records found for [%s] %q", dns.TypeToString[qtype], name)
 	return &lookupResponse{LookupResult: lookupNameError}, nil
 }
 
