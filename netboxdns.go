@@ -57,7 +57,8 @@ func (netboxdns *NetboxDNS) ServeDNS(
 ) (int, error) {
 	state := request.Request{W: respWriter, Req: reqMsg}
 	qname := state.QName()
-	qtype := state.QType()
+	family := state.Family()
+	qtype := fixQType(state.QType(), family)
 
 	// check if plugin is configured to respond to the requested zone
 	respondingZone := plugin.Zones(netboxdns.zones).Matches(qname)
@@ -65,7 +66,7 @@ func (netboxdns *NetboxDNS) ServeDNS(
 		return netboxdns.nextOrFailure(reqContext, respWriter, reqMsg)
 	}
 
-	response, err := netboxdns.lookup(qname, qtype, state.Family())
+	response, err := netboxdns.lookup(qname, qtype, family)
 	if err != nil {
 		return dns.RcodeServerFailure, err
 	}
@@ -106,4 +107,20 @@ func (netboxdns *NetboxDNS) nextOrFailure(
 		writer,
 		request,
 	)
+}
+
+func fixQType(stateQtype uint16, family int) uint16 {
+	var qtype uint16
+	switch stateQtype {
+	case dns.TypeA, dns.TypeAAAA:
+		switch family {
+		case 1:
+			qtype = dns.TypeA
+		case 2:
+			qtype = dns.TypeAAAA
+		}
+		return qtype
+	default:
+		return stateQtype
+	}
 }
