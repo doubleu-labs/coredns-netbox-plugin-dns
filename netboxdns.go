@@ -70,9 +70,21 @@ func (netboxdns *NetboxDNS) ServeDNS(
 	if err != nil {
 		return dns.RcodeServerFailure, err
 	}
-	if response.LookupResult == lookupNameError &&
-		netboxdns.fall.Through(qname) {
-		return netboxdns.nextOrFailure(reqContext, respWriter, reqMsg)
+	if response.LookupResult == lookupNameError {
+		if netboxdns.fall.Through(qname) {
+			logger.Debugf(
+				"forwarding request [%s] %q to next plugin",
+				dns.TypeToString[qtype],
+				qname,
+			)
+			return netboxdns.nextOrFailure(reqContext, respWriter, reqMsg)
+		} else {
+			logger.Debugf(
+				"no records for [%s] %q; fallthrough not enabled",
+				dns.TypeToString[qtype],
+				qname,
+			)
+		}
 	}
 
 	respMsg := &dns.Msg{
