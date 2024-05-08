@@ -197,11 +197,15 @@ func (netboxdns *NetboxDNS) lookupDirect(
 	zone *netbox.Zone,
 	family int,
 ) (*lookupResponse, error) {
+	queryTypes := []string{dns.TypeToString[qtype]}
+	if qtype == dns.TypeA || qtype == dns.TypeAAAA {
+		queryTypes = append(queryTypes, "CNAME")
+	}
 	records, err := netbox.GetRecordsQuery(
 		netboxdns.requestClient,
 		&netbox.RecordQuery{
 			FQDN: qname,
-			Type: []string{dns.TypeToString[qtype]},
+			Type: queryTypes,
 			Zone: zone,
 		},
 	)
@@ -222,7 +226,8 @@ func (netboxdns *NetboxDNS) lookupDirect(
 		if err != nil {
 			return nil, err
 		}
-		if qtype == dns.TypeCNAME {
+		cnames := filterRRByType(answer, dns.TypeCNAME)
+		if qtype == dns.TypeCNAME || len(cnames) > 0 {
 			answer = append(answer, extra...)
 			extra = nil
 		}
