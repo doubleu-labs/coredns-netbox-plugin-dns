@@ -1,4 +1,4 @@
-FROM docker.io/netboxcommunity/netbox:latest
+FROM docker.io/netboxcommunity/netbox:v4.0
 
 COPY ./requirements-plugin.txt /opt/netbox/
 RUN /opt/netbox/venv/bin/pip install \

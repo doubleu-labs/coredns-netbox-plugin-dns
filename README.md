@@ -14,6 +14,8 @@ The *netboxdns* plugin provides resolution for zones configured using
 
 **Depends on `netbox-plugin-dns` version `0.22.8` or greater.**
 
+**Validated for `netbox` >= v4.0.2 and `netbox-plugin-dns` >= v1.0.0.**
+
 The account that the API token is tied to will need the following permissions:
 
 - `netbox_dns.view_zone`
