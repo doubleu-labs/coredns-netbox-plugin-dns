@@ -34,7 +34,6 @@
             "command": "go",
             "args": [
                 "test",
-                "-short",
                 "-coverprofile=${workspaceFolder}/coverage.out",
                 "./..."
             ],
