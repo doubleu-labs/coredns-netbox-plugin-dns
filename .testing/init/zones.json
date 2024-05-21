@@ -1,6 +1,9 @@
 [
     {
         "name": "example.com",
+        "view": {
+            "name": "coredns testing"
+        },
         "nameservers": [
             {
                 "name": "dns01.example.com"
@@ -24,6 +27,9 @@
     },
     {
         "name": "0.0.10.in-addr.arpa",
+        "view": {
+            "name": "coredns testing"
+        },
         "nameservers": [
             {
                 "name": "dns01.example.com"
@@ -47,6 +53,9 @@
     },
     {
         "name": "1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa",
+        "view": {
+            "name": "coredns testing"
+        },
         "nameservers": [
             {
                 "name": "dns01.example.com"
@@ -70,6 +79,9 @@
     },
     {
         "name": "sub.example.com",
+        "view": {
+            "name": "coredns testing"
+        },
         "nameservers": [
             {
                 "name": "dns01.example.com"
@@ -93,6 +105,9 @@
     },
     {
         "name": "1.0.10.in-addr.arpa",
+        "view": {
+            "name": "coredns testing"
+        },
         "nameservers": [
             {
                 "name": "dns01.example.com"
@@ -116,6 +131,9 @@
     },
     {
         "name": "2.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa",
+        "view": {
+            "name": "coredns testing"
+        },
         "nameservers": [
             {
                 "name": "dns01.example.com"
@@ -139,6 +157,9 @@
     },
     {
         "name": "subtwo.example.com",
+        "view": {
+            "name": "coredns testing"
+        },
         "nameservers": [
             {
                 "name": "dns01.example.com"
@@ -162,6 +183,9 @@
     },
     {
         "name": "2.0.10.in-addr.arpa",
+        "view": {
+            "name": "coredns testing"
+        },
         "nameservers": [
             {
                 "name": "dns01.example.com"
@@ -185,6 +209,9 @@
     },
     {
         "name": "3.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa",
+        "view": {
+            "name": "coredns testing"
+        },
         "nameservers": [
             {
                 "name": "dns01.example.com"

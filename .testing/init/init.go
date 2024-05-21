@@ -52,10 +52,14 @@ func post(client *http.Client, path string, filepath string) (string, []byte) {
 }
 
 func main() {
+	views := filepath.Join(execdir, "views.json")
 	nameservers := filepath.Join(execdir, "nameservers.json")
 	zones := filepath.Join(execdir, "zones.json")
 	records := filepath.Join(execdir, "records.json")
 	client := &http.Client{}
+
+	viewsStatus, viewsContent := post(client, "/views/", views)
+	log.Printf("views: %s\n%s", viewsStatus, viewsContent)
 
 	nsStatus, nsContent := post(client, "/nameservers/", nameservers)
 	log.Printf("nameservers: %s\n%s", nsStatus, nsContent)
