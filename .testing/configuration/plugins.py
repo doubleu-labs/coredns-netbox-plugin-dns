@@ -5,7 +5,6 @@ PLUGINS = [
 
 PLUGINS_CONFIG = {
     'netbox_dns': {
-        'feature_ipam_coupling': True,
-        'tolerate_underscores_in_hostnames': True,
+        'tolerate_underscores_in_labels': True,
     },
 }

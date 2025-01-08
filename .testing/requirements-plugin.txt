@@ -1,1 +1,1 @@
-netbox-plugin-dns >= 1.0.0
+netbox-plugin-dns == 1.2.0
