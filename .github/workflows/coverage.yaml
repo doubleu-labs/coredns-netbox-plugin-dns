@@ -40,7 +40,7 @@ jobs:
         done && \
         go run ${{ github.workspace }}/.testing/init/init.go
     - run: go test -coverprofile='coverage.out' ${{ github.workspace }}/...
-    - uses: sonarsource/sonarcloud-github-action@master
+    - uses: sonarsource/sonarqube-scan-action@v4
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
