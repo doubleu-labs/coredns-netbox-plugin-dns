@@ -19,7 +19,7 @@ services:
     - "9999:8080"
 
   postgres:
-    image: docker.io/library/postgres:16
+    image: docker.io/library/postgres:17
     env_file: env/postgres.env
   
   redis:
