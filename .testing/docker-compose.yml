@@ -23,17 +23,17 @@ services:
     env_file: env/postgres.env
   
   redis:
-    image: docker.io/library/redis:7
+    image: docker.io/valkey/valkey:8.0.2
     command:
     - sh
     - -c
-    - redis-server --appendonly yes --requirepass $$REDIS_PASSWORD
+    - valkey-server --appendonly yes --requirepass $$REDIS_PASSWORD
     env_file: env/redis.env
   
   redis-cache:
-    image: docker.io/library/redis:7
+    image: docker.io/valkey/valkey:8.0.2
     command:
     - sh
     - -c
-    - redis-server --requirepass $$REDIS_PASSWORD
+    - valkey-server --requirepass $$REDIS_PASSWORD
     env_file: env/redis-cache.env
