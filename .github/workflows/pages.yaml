@@ -10,9 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: wranders/markdown-to-pages-action@v0
+    - uses: wranders/markdown-to-pages-action@v1
       with:
-        out-path: out
+        out_path: out
         token: ${{ secrets.GITHUB_TOKEN }}
     - uses: actions/upload-pages-artifact@v3
       with:
