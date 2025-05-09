@@ -35,38 +35,38 @@ netboxdns [ZONES...] {
 }
 ```
 
-* **ZONES**: A space-delimited list of zones that the plugin will answer for
+- **ZONES**: A space-delimited list of zones that the plugin will answer for
 
-* **`token TOKEN` (REQUIRED)**: The API token used to authenticate requests
+- **`token TOKEN` (REQUIRED)**: The API token used to authenticate requests
 to the Netbox instance
 
-* **`url URL` (REQUIRED)**: The URL that Netbox is accessible at
+- **`url URL` (REQUIRED)**: The URL that Netbox is accessible at
 
-* **`timeout DURATION`** (DEFAULT=`5s`): A duration to time-out requests to the
+- **`timeout DURATION`** (DEFAULT=`5s`): A duration to time-out requests to the
 Netbox API
 
-* **`fallthrough`**: If no record exists, send the request to the next plugin.
-  * **(OPTIONAL) `ZONES...`**: A space-delimited list of zones that requests
+- **`fallthrough`**: If no record exists, send the request to the next plugin.
+  - **(OPTIONAL) `ZONES...`**: A space-delimited list of zones that requests
   should be forwarded to the next plugin. If requests are not in the specified
   zones, an empty reponse is returned.
 
-* **`tls`**: Used to authenticate to the Netbox instance if it is using HTTPS.
-  * `0 arguments`: Creates a TLS configuration that uses system CA certificates
+- **`tls`**: Used to authenticate to the Netbox instance if it is using HTTPS.
+  - `0 arguments`: Creates a TLS configuration that uses system CA certificates
     to validate the connection to the Netbox instance. Use when Netbox is using
     a server certificate signed by a public CA. The client is not authenticated
     by the server.
 
-  * `1 argument`: Path to the CA PEM file. Creates a TLS configuration that uses
+  - `1 argument`: Path to the CA PEM file. Creates a TLS configuration that uses
     the specified CA certificate to validate the connection to the Netbox
     instance. Use when Netbox is using a server certificate signed by a private
     CA. The client is not authenticated by the server.
 
-  * `2 arguments`: Paths to the client certificate and private key PEM files.
+  - `2 arguments`: Paths to the client certificate and private key PEM files.
     Creates a TLS configuration that uses system CA certificates to validate the
     connection to the Netbox instance. Use when certificates are needed to
     authenticate to the Netbox instance (mTLS) (Netbox Cloud).
 
-  * `3 arguments`: Paths to the client certificate, private key, and CA PEM
+  - `3 arguments`: Paths to the client certificate, private key, and CA PEM
     files. Creates a TLS configuration that uses the specified CA certificate to
     validate the connection to the Netbox instance. Use when certificates are
     needed to authenticate to the Netbox instance (mTLS) and Netbox is using a
