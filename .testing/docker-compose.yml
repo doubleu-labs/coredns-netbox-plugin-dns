@@ -23,7 +23,7 @@ services:
     env_file: env/postgres.env
   
   redis:
-    image: docker.io/valkey/valkey:8.0.2
+    image: docker.io/valkey/valkey:8.1.1
     command:
     - sh
     - -c
@@ -31,7 +31,7 @@ services:
     env_file: env/redis.env
   
   redis-cache:
-    image: docker.io/valkey/valkey:8.0.2
+    image: docker.io/valkey/valkey:8.1.1
     command:
     - sh
     - -c
