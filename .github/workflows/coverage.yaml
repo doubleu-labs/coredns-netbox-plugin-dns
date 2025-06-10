@@ -39,7 +39,11 @@ jobs:
           sleep 5
         done && \
         go run ${{ github.workspace }}/.testing/init/init.go
-    - run: go test -coverprofile='coverage.out' ${{ github.workspace }}/...
+    - run: |-
+        go test \
+        -coverprofile='coverage.out' \
+        -coverpkg=github.com/doubleu-labs/coredns-netbox-plugin-dns,github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox \
+        ${{ github.workspace }}
     - uses: sonarsource/sonarqube-scan-action@v5
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

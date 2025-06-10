@@ -35,7 +35,8 @@
             "args": [
                 "test",
                 "-coverprofile=${workspaceFolder}/coverage.out",
-                "./..."
+                "-coverpkg=github.com/doubleu-labs/coredns-netbox-plugin-dns,github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox",
+                "."
             ],
             "options": {
                 "env": {
