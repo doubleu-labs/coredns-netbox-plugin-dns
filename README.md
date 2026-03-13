@@ -5,16 +5,16 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/doubleu-labs/coredns-netbox-plugin-dns)](https://goreportcard.com/report/github.com/doubleu-labs/coredns-netbox-plugin-dns)
 
 *netboxdns* - provides resolution using
-[Netbox DNS Plugin (netbox-plugin-dns)](https://github.com/peteeckel/netbox-plugin-dns)
+[Netbox DNS Plugin (netbox-plugin-dns)](https://github.com/sys4/netbox-plugin-dns)
 
 ## Description
 
 The *netboxdns* plugin provides resolution for zones configured using
-[netbox-plugin-dns](https://github.com/peteeckel/netbox-plugin-dns).
+[netbox-plugin-dns](https://github.com/sys4/netbox-plugin-dns).
 
-**Depends on `netbox-plugin-dns` version `0.22.8` or greater.**
+**Depends on `netbox-plugin-dns` version `1.5.4` or greater.**
 
-**Validated for `netbox` >= `v4.3.0` and `netbox-plugin-dns` >= `v1.3.0`.**
+**Validated for `netbox` >= `v4.5.4` and `netbox-plugin-dns` >= `v1.5.4`.**
 
 The account that the API token is tied to will need the following permissions:
 

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -11,10 +13,20 @@ import (
 )
 
 var (
-	apiRoot = "http://localhost:9999/api/plugins/netbox-dns"
-	token   = "w5pgWXPqZVmngLN4w4XwuPvZfUC72ytDxnnHgEmI"
-	execdir string
+	hostApiRoot = "http://localhost:9999/api"
+	apiRoot     = hostApiRoot + "/plugins/netbox-dns"
+	token       string
+	execdir     string
 )
+
+type tokenProvisionResponse struct {
+	Key   string `json:"display"`
+	Token string `json:"token"`
+}
+
+func (t tokenProvisionResponse) String() string {
+	return fmt.Sprintf("nbt_%s.%s", t.Key, t.Token)
+}
 
 func init() {
 	_, filename, _, ok := runtime.Caller(0)
@@ -22,6 +34,28 @@ func init() {
 		panic("unable to get current filename")
 	}
 	execdir = filepath.Dir(filename)
+}
+
+func provisionToken(client *http.Client) {
+	payload := []byte(`{"username": "admin", "password": "admin"}`)
+	req, err := http.NewRequest(
+		"POST",
+		hostApiRoot+"/users/tokens/provision/",
+		bytes.NewBuffer(payload),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var tokenProvisionResponse tokenProvisionResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenProvisionResponse); err != nil {
+		log.Fatal(err)
+	}
+	token = tokenProvisionResponse.String()
 }
 
 func post(client *http.Client, path string, filepath string) (string, []byte) {
@@ -35,7 +69,7 @@ func post(client *http.Client, path string, filepath string) (string, []byte) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Token %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json; indent=4")
 	req.ContentLength = stat.Size()
@@ -57,6 +91,8 @@ func main() {
 	zones := filepath.Join(execdir, "zones.json")
 	records := filepath.Join(execdir, "records.json")
 	client := &http.Client{}
+
+	provisionToken(client)
 
 	viewsStatus, viewsContent := post(client, "/views/", views)
 	log.Printf("views: %s\n%s", viewsStatus, viewsContent)
