@@ -124,28 +124,40 @@ otherwise specified by the `-o` flag.
 
 ## Contributing
 
-A [Docker Compose file](./.testing/docker-compose.yml) is provided to setup a
-minimal Netbox instance to run tests against. If using Visual Studio Code, two
-tasks are configured to start and stop this instance. Use `Ctrl+Shift+P` and
-select `[Start] Netbox test instance`.
+A [`justfile`](./justfile) is provided with commands to help with development.
+It uses Podman and Podman Compose to run Netbox with the installed plugins in
+a containerized environment with PostgreSQL and Valkey.
 
-Check that Netbox is finished with the initial setup by watching the container
-logs using:
+To start the test instance, run:
 
 ```sh
-docker logs -f coredns-netbox-plugin-dns-netbox-1
+just instance-start
 ```
 
-The test instance will be available at
+This will initialize Netbox and wait for it to become healthy, then populate the
+database with the test dataset.
+
+This can be browsed by visiting
 [http://localhost:9999](http://localhost:9999/) with the `admin:admin` username
-and password. When you see healthcheck requests, invoke
-[init.go](./.testing/init/init.go) to populate the test dataset.
+and password.
+
+To stop the test instance, run:
 
 ```sh
-go run .testing/init/init.go
+just instance-stop
 ```
 
-This standalone application POSTs the contents of the
-JSON files in [.testing/init](./.testing/init/) to populate the database. If
-adding a new feature or bugfix that requires additional records, be sure to add
-the Zone or Record to the appropriate JSON file.
+To run test and generate coverage the report, run:
+
+```sh
+just test
+```
+
+To view the coverage report using Go's built-in tool, run:
+
+```sh
+just coverage
+```
+
+`test` depends on `instance-start` and `coverage` depends on `test`, so they
+will be run automatically when `just test` or `just coverage` is run. 
