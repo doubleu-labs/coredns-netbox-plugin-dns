@@ -48,18 +48,18 @@ Netbox API
 - **`fallthrough`**: If no record exists, send the request to the next plugin.
   - **(OPTIONAL) `ZONES...`**: A space-delimited list of zones that requests
   should be forwarded to the next plugin. If requests are not in the specified
-  zones, an empty reponse is returned.
+  zones, an empty response is returned.
 
 - **`tls`**: Used to authenticate to the Netbox instance if it is using HTTPS.
   - `0 arguments`: Creates a TLS configuration that uses system CA certificates
     to validate the connection to the Netbox instance. Use when Netbox is using
-    a server certificate signed by a public CA. The client is not authenticated
-    by the server.
+    a server certificate signed by a public CA. The server does not authenticate
+    the client.
 
   - `1 argument`: Path to the CA PEM file. Creates a TLS configuration that uses
     the specified CA certificate to validate the connection to the Netbox
     instance. Use when Netbox is using a server certificate signed by a private
-    CA. The client is not authenticated by the server.
+    CA. The server does not authenticate the client.
 
   - `2 arguments`: Paths to the client certificate and private key PEM files.
     Creates a TLS configuration that uses system CA certificates to validate the
@@ -75,7 +75,7 @@ Netbox API
 ## Building
 
 Clone the [coredns](https://github.com/coredns/coredns) repository and change
-into it's directory.
+into its directory.
 
 ```sh
 git clone https://github.com/coredns/coredns.git
@@ -113,7 +113,7 @@ Build using `make`:
 make
 ```
 
-Or if `make` is not available, simply run:
+Or if `make` is not available, run:
 
 ```sh
 go generate && go build
