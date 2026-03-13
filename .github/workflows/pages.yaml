@@ -9,12 +9,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: wranders/markdown-to-pages-action@v1
       with:
         out_path: out
         token: ${{ secrets.GITHUB_TOKEN }}
-    - uses: actions/upload-pages-artifact@v3
+    - uses: actions/upload-pages-artifact@v4
       with:
         path: out
   deploy:
