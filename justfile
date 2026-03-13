@@ -4,6 +4,7 @@ _compose-common := "--project-directory='.testing' --file=.testing/docker-compos
 _ensure-podman-sock:
     systemctl --user start podman.socket
 
+[script("bash")]
 instance-start: _ensure-podman-sock
     podman compose {{_compose-common}} up --build --detach
     until [[ "`podman inspect -f {{{{.State.Health.Status}} testing-netbox-1`" == "healthy" ]]; do \
