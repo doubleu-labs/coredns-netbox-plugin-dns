@@ -28,7 +28,7 @@ func recordsToRR(records []netbox.Record) ([]dns.RR, error) {
 				record.FQDN,
 				*record.TTL,
 				record.Type,
-				record.Value,
+				record.AbsoluteValue,
 			)
 			rr, err := dns.NewRR(rrStr)
 			if err != nil {
@@ -42,8 +42,8 @@ func recordsToRR(records []netbox.Record) ([]dns.RR, error) {
 
 func recordToTXT(record netbox.Record) *dns.TXT {
 	txt := make([]string, 0)
-	if strings.HasPrefix(record.Value, `"`) {
-		values := txtMultiValueRegexp.FindAllString(record.Value, -1)
+	if strings.HasPrefix(record.AbsoluteValue, `"`) {
+		values := txtMultiValueRegexp.FindAllString(record.AbsoluteValue, -1)
 		for i := range values {
 			values[i] = strings.Trim(values[i], `"`)
 			values[i] = strings.ReplaceAll(values[i], "\\r\\n", "")
@@ -54,7 +54,7 @@ func recordToTXT(record netbox.Record) *dns.TXT {
 			}
 		}
 	} else {
-		txt = append(txt, record.Value)
+		txt = append(txt, record.AbsoluteValue)
 	}
 	return &dns.TXT{
 		Hdr: dns.RR_Header{

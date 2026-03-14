@@ -6,11 +6,11 @@ import (
 )
 
 type Record struct {
-	Type  string  `json:"type"`
-	Value string  `json:"value"`
-	TTL   *uint32 `json:"ttl"`
-	Zone  Zone    `json:"zone"`
-	FQDN  string  `json:"fqdn"`
+	Type          string  `json:"type"`
+	AbsoluteValue string  `json:"absolute_value"`
+	TTL           *uint32 `json:"ttl"`
+	Zone          Zone    `json:"zone"`
+	FQDN          string  `json:"fqdn"`
 }
 
 type RecordQuery struct {
