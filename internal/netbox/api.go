@@ -36,11 +36,10 @@ func doGet(
 
 	request.Header.Set(
 		"Authorization",
-		fmt.Sprintf("Token %s", requestClient.Token),
+		fmt.Sprintf("Bearer %s", requestClient.Token),
 	)
 
 	request.Header.Set("User-Agent", requestClient.UserAgent)
-
 	return requestClient.Client.Do(request)
 }
 
