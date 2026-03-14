@@ -1,12 +1,14 @@
 package netboxdns
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"testing"
-	"time"
 
 	"github.com/coredns/coredns/plugin/pkg/dnstest"
 	"github.com/coredns/coredns/plugin/test"
@@ -34,27 +36,14 @@ var testFamilyToString map[testFamily]string = map[testFamily]string{
 	testFamilyV6: "V6",
 }
 
+var testInstanceToken string
+
 const (
-	testInstanceToken   string = "w5pgWXPqZVmngLN4w4XwuPvZfUC72ytDxnnHgEmI"
 	testInstanceUrlHost string = "localhost:9999"
 	testInstanceUrlPath string = "/api/plugins/netbox-dns/"
 )
 
-var netboxdnsPlugin NetboxDNS = NetboxDNS{
-	Next:  test.ErrorHandler(),
-	zones: []string{"."},
-	requestClient: &netbox.APIRequestClient{
-		Client: &http.Client{
-			Timeout: time.Second * 30,
-		},
-		NetboxURL: &url.URL{
-			Scheme: "http",
-			Host:   testInstanceUrlHost,
-			Path:   testInstanceUrlPath,
-		},
-		Token: testInstanceToken,
-	},
-}
+var netboxdnsPlugin *NetboxDNS
 
 func RunTestLookup(t *testing.T, tcs []test.Case, family testFamily) {
 	for _, tc := range tcs {
@@ -129,6 +118,53 @@ func RunTestLookupContainsCNAME(resp *dns.Msg) bool {
 		}
 	}
 	return out
+}
+
+func ConfigureTokenAndPlugin(t *testing.T) {
+	if testInstanceToken != "" && netboxdnsPlugin != nil {
+		return
+	}
+	body := bytes.NewBuffer([]byte(`{"username":"admin","password":"admin"}`))
+	req := &http.Request{
+		Method: "POST",
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   testInstanceUrlHost,
+			Path:   "/api/users/tokens/provision/",
+		},
+		Body:          io.NopCloser(body),
+		ContentLength: int64(body.Len()),
+		Header:        make(http.Header),
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{
+		Timeout: defaultHTTPClientTimeout,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal("provision api token: " + err.Error())
+	}
+	token := struct {
+		Key   string `json:"key"`
+		Token string `json:"token"`
+	}{}
+	if err := json.NewDecoder(resp.Body).Decode(&token); err != nil {
+		t.Fatal("provision api token: " + err.Error())
+	}
+	testInstanceToken = fmt.Sprintf("nbt_%s.%s", token.Key, token.Token)
+	netboxdnsPlugin = &NetboxDNS{
+		Next:  test.ErrorHandler(),
+		zones: []string{"."},
+		requestClient: &netbox.APIRequestClient{
+			Client: client,
+			NetboxURL: &url.URL{
+				Scheme: "http",
+				Host:   testInstanceUrlHost,
+				Path:   testInstanceUrlPath,
+			},
+			Token: testInstanceToken,
+		},
+	}
 }
 
 var (
@@ -309,6 +345,7 @@ var (
 )
 
 func TestLookupZones(t *testing.T) {
+	ConfigureTokenAndPlugin(t)
 	RunTestLookup(t, testLookupForwardZonesCasesv4, testFamilyV4)
 	RunTestLookup(t, testLookupReverseZonesCasesv4, testFamilyV4)
 	RunTestLookup(t, testLookupForwardZonesCasesv6, testFamilyV6)
@@ -674,6 +711,7 @@ var (
 )
 
 func TestLookupRecords(t *testing.T) {
+	ConfigureTokenAndPlugin(t)
 	RunTestLookup(t, testLookupRecordV4, testFamilyV4)
 	RunTestLookup(t, testLookupPTRV4, testFamilyV4)
 	RunTestLookup(t, testLookupRecordV6, testFamilyV6)
@@ -704,6 +742,7 @@ var (
 )
 
 func TestLookupUnknown(t *testing.T) {
+	ConfigureTokenAndPlugin(t)
 	RunTestLookup(t, testUnknownRecords, testFamilyV4)
 	RunTestLookup(t, testUnknownRecordsV4, testFamilyV4)
 	RunTestLookup(t, testUnknownRecordsV6, testFamilyV6)
