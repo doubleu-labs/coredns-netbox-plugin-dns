@@ -20,7 +20,7 @@ var (
 )
 
 type tokenProvisionResponse struct {
-	Key   string `json:"display"`
+	Key   string `json:"key"`
 	Token string `json:"token"`
 }
 
