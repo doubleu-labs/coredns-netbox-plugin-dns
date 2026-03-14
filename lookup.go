@@ -55,7 +55,7 @@ func (netboxdns *NetboxDNS) lookup(
 	}
 
 	// lookup exact request
-	direct, err := netboxdns.lookupDirect(nameTrimmed, qtype, zone, family)
+	direct, err := netboxdns.lookupDirect(name, qtype, zone, family)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (netboxdns *NetboxDNS) lookup(
 
 	// if no exact records exist for the request, check if the qname is a
 	// delegate zone
-	delegate, err := netboxdns.lookupDelegate(nameTrimmed, zone, family)
+	delegate, err := netboxdns.lookupDelegate(name, zone, family)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (netboxdns *NetboxDNS) processExtra(
 		records, err := netbox.GetRecordsQuery(
 			netboxdns.requestClient,
 			&netbox.RecordQuery{
-				FQDN: strings.TrimSuffix(name, "."),
+				FQDN: name,
 				Type: reqType,
 				Zone: zone,
 			},
