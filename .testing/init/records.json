@@ -53,7 +53,7 @@
         },
         "type": "MX",
         "name": "@",
-        "value": "10 mail.example.com"
+        "value": "10 mail"
     },
     {
         "zone": {
@@ -133,7 +133,7 @@
         },
         "type": "SRV",
         "name": "_x-puppet._tcp",
-        "value": "0 5 8140 puppet-server-a.example.com"
+        "value": "0 5 8140 puppet-server-a"
     },
     {
         "zone": {
@@ -157,7 +157,7 @@
         },
         "type": "SRV",
         "name": "_x-puppet._tcp",
-        "value": "0 5 8140 puppet-server-b.example.com"
+        "value": "0 5 8140 puppet-server-b.example.com."
     },
     {
         "zone": {
@@ -181,7 +181,7 @@
         },
         "type": "CNAME",
         "name": "www",
-        "value": "web.example.com"
+        "value": "web"
     },
     {
         "zone": {
