@@ -16,6 +16,18 @@ The *netboxdns* plugin provides resolution for zones configured using
 
 **Validated for `netbox` >= `v4.5.4` and `netbox-plugin-dns` >= `v1.5.4`.**
 
+### Zone status filter
+
+Only zones with NetBox status `active` are served. Zones with status
+`parked`, `deprecated`, or `reserved` are returned by the NetBox API but
+are deliberately excluded from every serving path of this plugin (lookup,
+AXFR, IXFR poller). This matches the semantic intent of those statuses:
+they describe records-of-record, not zones to publish on the wire.
+
+To temporarily take a zone out of service without deleting it from
+NetBox, switch its status from `active` to `parked` — the plugin will
+stop serving it on the next poll cycle.
+
 The account that the API token is tied to will need the following permissions:
 
 - `netbox_dns.view_zone`

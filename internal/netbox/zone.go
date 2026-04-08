@@ -43,16 +43,22 @@ func urlZoneID(netboxurl *url.URL, id int) *url.URL {
 	return netboxurl.JoinPath("zones", "/", strconv.Itoa(id), "/")
 }
 
-// GetZones returns the zones managed by netbox-dns. When viewName is non-empty
-// the result is filtered server-side to that view (NetBox supports
-// `?view=<name>` on /api/plugins/netbox-dns/zones/).
+// GetZones returns the active zones managed by netbox-dns. When viewName
+// is non-empty the result is filtered server-side to that view (NetBox
+// supports `?view=<name>` on /api/plugins/netbox-dns/zones/).
+//
+// Only zones with status=active are returned. NetBox-dns also has parked,
+// deprecated, and reserved statuses; those represent zones that exist as
+// records-of-record but should not be served as authoritative DNS, so we
+// exclude them from every normal serving path (lookup, AXFR, IXFR poller).
 func GetZones(requestClient *APIRequestClient, viewName string) ([]Zone, error) {
 	requestUrl := urlZones(requestClient.NetboxURL)
+	q := requestUrl.Query()
+	q.Set("status", "active")
 	if viewName != "" {
-		q := requestUrl.Query()
 		q.Set("view", viewName)
-		requestUrl.RawQuery = q.Encode()
 	}
+	requestUrl.RawQuery = q.Encode()
 	zones, err := getMany[Zone](requestClient, requestUrl.String())
 	if err != nil {
 		return nil, err

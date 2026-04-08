@@ -75,19 +75,25 @@ func TestGetZones_WithView_AppendsQueryParam(t *testing.T) {
 	}
 }
 
-func TestGetZones_WithoutView_NoQueryParam(t *testing.T) {
+// GetZones always pins ?status=active so parked / deprecated / reserved
+// zones are excluded from the normal serving paths.
+func TestGetZones_AlwaysFiltersStatusActive(t *testing.T) {
 	_, mux, client := mockNetbox(t)
-	var gotRawQuery string
+	var gotStatus, gotView string
 	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, r *http.Request) {
-		gotRawQuery = r.URL.RawQuery
+		gotStatus = r.URL.Query().Get("status")
+		gotView = r.URL.Query().Get("view")
 		writeJSON(w, fixtureZonesEmpty)
 	})
 
 	if _, err := GetZones(client, ""); err != nil {
 		t.Fatalf("GetZones: %v", err)
 	}
-	if gotRawQuery != "" {
-		t.Errorf("expected no query string, got %q", gotRawQuery)
+	if gotStatus != "active" {
+		t.Errorf("?status = %q, want %q", gotStatus, "active")
+	}
+	if gotView != "" {
+		t.Errorf("?view should be empty when no view configured, got %q", gotView)
 	}
 }
 
