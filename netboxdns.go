@@ -88,8 +88,17 @@ func (netboxdns *NetboxDNS) ServeDNS(
 		return netboxdns.nextOrFailure(reqContext, respWriter, reqMsg)
 	}
 
+	// Per-request metrics: latency is observed unconditionally, the
+	// rcode counter is bumped at the single return points below via
+	// recordServeResult so SERVFAIL paths are not lost.
+	start := time.Now()
+	defer func() {
+		requestDuration.WithLabelValues(respondingZone).Observe(time.Since(start).Seconds())
+	}()
+
 	response, err := netboxdns.lookup(qname, qtype, family)
 	if err != nil {
+		requestsTotal.WithLabelValues(respondingZone, rcodeLabel(dns.RcodeServerFailure)).Inc()
 		return dns.RcodeServerFailure, err
 	}
 	if response.LookupResult == lookupNameError {
@@ -125,8 +134,17 @@ func (netboxdns *NetboxDNS) ServeDNS(
 		respMsg.Authoritative = false
 	}
 
+	requestsTotal.WithLabelValues(respondingZone, rcodeLabel(respMsg.Rcode)).Inc()
 	respWriter.WriteMsg(respMsg)
 	return dns.RcodeSuccess, nil
+}
+
+// rcodeLabel renders a DNS rcode as a stable, low-cardinality label string.
+func rcodeLabel(rcode int) string {
+	if s, ok := dns.RcodeToString[rcode]; ok {
+		return s
+	}
+	return "OTHER"
 }
 
 func (netboxdns *NetboxDNS) nextOrFailure(

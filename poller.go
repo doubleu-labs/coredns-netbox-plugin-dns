@@ -61,11 +61,17 @@ func (n *NetboxDNS) stopPollerAndWait() {
 // zones rather than fetched from /records/, and their SOA serial is
 // assigned by catalogTracker so it only bumps on real membership change.
 func (n *NetboxDNS) pollOnce() {
+	start := time.Now()
+	defer func() {
+		pollDuration.Observe(time.Since(start).Seconds())
+	}()
 	zones, err := netbox.GetZones(n.requestClient, n.viewName)
 	if err != nil {
+		pollCyclesTotal.WithLabelValues("error").Inc()
 		logger.Errorf("poller: listing zones: %v", err)
 		return
 	}
+	pollCyclesTotal.WithLabelValues("success").Inc()
 	n.pollCatalogs(zones)
 	for i := range zones {
 		z := &zones[i]
@@ -92,6 +98,8 @@ func (n *NetboxDNS) pollOnce() {
 			continue
 		}
 		n.cache.Put(z.Name, z.SOASerial, rrs)
+		zoneSerial.WithLabelValues(z.Name).Set(float64(z.SOASerial))
+		cacheSnapshots.WithLabelValues(z.Name).Set(float64(n.cache.Len(z.Name)))
 	}
 }
 
@@ -111,5 +119,22 @@ func (n *NetboxDNS) pollCatalogs(activeZones []netbox.Zone) {
 		serial := n.catalogTracker.NextSerial(c.Name, activeZones)
 		rrs := buildCatalog(c, activeZones)
 		n.cache.Put(c.Name, serial, rrs)
+		zoneSerial.WithLabelValues(c.Name).Set(float64(serial))
+		cacheSnapshots.WithLabelValues(c.Name).Set(float64(n.cache.Len(c.Name)))
+		catalogMembers.WithLabelValues(c.Name).Set(float64(catalogMemberCount(c, activeZones)))
 	}
+}
+
+// catalogMemberCount returns how many active zones from the same view are
+// published in the given catalog. Self-references are excluded so the gauge
+// matches the synthesised PTR count.
+func catalogMemberCount(catalog *netbox.Zone, active []netbox.Zone) int {
+	n := 0
+	for i := range active {
+		if active[i].ID == catalog.ID {
+			continue
+		}
+		n++
+	}
+	return n
 }

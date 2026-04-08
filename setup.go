@@ -2,6 +2,7 @@ package netboxdns
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/core/dnsserver"
@@ -18,6 +19,15 @@ func setup(controller *caddy.Controller) error {
 	if err := Parse(controller, netboxdns); err != nil {
 		return err
 	}
+	// Wrap the HTTP client transport so every NetBox API round-trip is
+	// observed by the netbox_requests_total / netbox_request_duration
+	// collectors. Done after Parse so the tls{} block has had a chance to
+	// install its own base transport.
+	base := netboxdns.requestClient.Client.Transport
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	netboxdns.requestClient.Client.Transport = &instrumentedTransport{base: base}
 	if netboxdns.viewName != "" {
 		// Fail fast on misconfiguration: NetBox returns HTTP 400 when an
 		// unknown view name is passed to /zones/?view=, so without this

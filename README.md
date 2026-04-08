@@ -131,6 +131,24 @@ Netbox API
     needed to authenticate to the Netbox instance (mTLS) and Netbox is using a
     server certificate signed by a private CA.
 
+## Metrics
+
+When the CoreDNS `prometheus` plugin is enabled, `netboxdns` exports the
+following collectors (all under the `coredns_netboxdns_` prefix):
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `requests_total` | counter | `zone`, `rcode` | DNS requests handled by the plugin. |
+| `request_duration_seconds` | histogram | `zone` | Per-request handling latency. |
+| `netbox_requests_total` | counter | `endpoint`, `code` | HTTP requests to NetBox (`endpoint` is `zones`/`records`/…; `code` is `OK`/`Not Found`/… or `error`). |
+| `netbox_request_duration_seconds` | histogram | `endpoint` | NetBox API round-trip latency. |
+| `transfers_total` | counter | `zone`, `kind` | Outgoing zone transfers. `kind` ∈ `axfr`, `ixfr_delta`, `ixfr_noop`, `ixfr_fallback`, `catalog_axfr`, `catalog_ixfr_delta`, `catalog_ixfr_noop`. |
+| `poll_cycles_total` | counter | `result` | Poller cycles (`success` / `error`). |
+| `poll_duration_seconds` | histogram | — | Full poll-cycle duration. |
+| `zone_serial` | gauge | `zone` | Last observed SOA serial of each zone (catalog zones included). |
+| `cache_snapshots` | gauge | `zone` | Snapshots currently held in the IXFR ring buffer. |
+| `catalog_members` | gauge | `catalog` | Member zones currently published in each catalog zone. |
+
 ## Building
 
 Clone the [coredns](https://github.com/coredns/coredns) repository and change

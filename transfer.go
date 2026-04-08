@@ -50,6 +50,7 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (<-chan []dns.RR, error
 
 	// IXFR no-op: requester already has the current (or newer) serial.
 	if serial != 0 && serial >= nbZone.SOASerial {
+		transfersTotal.WithLabelValues(nbZone.Name, "ixfr_noop").Inc()
 		ch := make(chan []dns.RR, 1)
 		ch <- []dns.RR{soa}
 		close(ch)
@@ -61,8 +62,18 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (<-chan []dns.RR, error
 	if serial != 0 && n.cache != nil {
 		if from, to, ok := n.cache.Diff(nbZone.Name, serial); ok && to.Serial == nbZone.SOASerial {
 			oldSOA := buildSOAWithSerial(nbZone, dns.Fqdn(nbZone.Name), from.Serial)
+			transfersTotal.WithLabelValues(nbZone.Name, "ixfr_delta").Inc()
 			return n.streamIXFR(soa, oldSOA, from, to), nil
 		}
+	}
+
+	// AXFR (serial==0) or IXFR fallback when the cache cannot serve a
+	// delta. The kind label distinguishes the two so AXFR fallbacks are
+	// visible without an extra metric.
+	if serial == 0 {
+		transfersTotal.WithLabelValues(nbZone.Name, "axfr").Inc()
+	} else {
+		transfersTotal.WithLabelValues(nbZone.Name, "ixfr_fallback").Inc()
 	}
 
 	ch := make(chan []dns.RR)
@@ -139,6 +150,7 @@ func (n *NetboxDNS) transferCatalog(catalog *netbox.Zone, serial uint32) (<-chan
 
 	// IXFR no-op.
 	if serial != 0 && serial >= latest.Serial {
+		transfersTotal.WithLabelValues(catalog.Name, "catalog_ixfr_noop").Inc()
 		ch := make(chan []dns.RR, 1)
 		ch <- []dns.RR{soa}
 		close(ch)
@@ -149,11 +161,13 @@ func (n *NetboxDNS) transferCatalog(catalog *netbox.Zone, serial uint32) (<-chan
 	if serial != 0 && n.cache != nil {
 		if from, to, ok := n.cache.Diff(catalog.Name, serial); ok && to.Serial == latest.Serial {
 			oldSOA := buildSOAWithSerial(catalog, dns.Fqdn(catalog.Name), from.Serial)
+			transfersTotal.WithLabelValues(catalog.Name, "catalog_ixfr_delta").Inc()
 			return n.streamIXFR(soa, oldSOA, from, to), nil
 		}
 	}
 
 	// AXFR / IXFR fallback.
+	transfersTotal.WithLabelValues(catalog.Name, "catalog_axfr").Inc()
 	ch := make(chan []dns.RR)
 	go func() {
 		defer close(ch)
