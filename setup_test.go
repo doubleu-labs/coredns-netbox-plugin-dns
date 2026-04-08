@@ -181,6 +181,15 @@ var setupTests []SetupTest = []SetupTest{
 		}`,
 		false,
 	},
+	{
+		"no value for view",
+		`netboxdns {
+			token sometoken
+			url http://localhost:9999/
+			view
+		}`,
+		true,
+	},
 }
 
 func TestSetup(t *testing.T) {

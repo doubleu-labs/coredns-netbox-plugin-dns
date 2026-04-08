@@ -29,8 +29,9 @@ type NetboxDNS struct {
 
 	requestClient *netbox.APIRequestClient
 
-	zones []string
-	fall  fall.F
+	zones    []string
+	fall     fall.F
+	viewName string
 }
 
 func NewNetboxDNS() *NetboxDNS {

@@ -22,6 +22,7 @@ func init() {
 		"tls":         parseTLS,
 		"token":       parseToken,
 		"url":         parseUrl,
+		"view":        parseView,
 	}
 }
 
@@ -157,6 +158,14 @@ func parseUrl(controller *caddy.Controller, netboxdns *NetboxDNS) error {
 		)
 	}
 	netboxdns.requestClient.NetboxURL = netboxUrl
+	return nil
+}
+
+func parseView(controller *caddy.Controller, netboxdns *NetboxDNS) error {
+	if !controller.NextArg() {
+		return controller.Err(`no value for "view" provided`)
+	}
+	netboxdns.viewName = controller.Val()
 	return nil
 }
 

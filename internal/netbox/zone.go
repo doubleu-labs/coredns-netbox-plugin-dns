@@ -10,9 +10,28 @@ type Zone struct {
 	ID          int        `json:"id"`
 	Name        string     `json:"name"`
 	NameServers []SOAMName `json:"nameservers"`
+	View        *View      `json:"view"`
+
+	// SOA fields populated by netbox-dns. soa_mname is a nested nameserver
+	// object (same shape as entries in NameServers).
+	SOATTL     uint32   `json:"soa_ttl"`
+	SOAMName   SOAMName `json:"soa_mname"`
+	SOARName   string   `json:"soa_rname"`
+	SOASerial  uint32   `json:"soa_serial"`
+	SOARefresh uint32   `json:"soa_refresh"`
+	SOARetry   uint32   `json:"soa_retry"`
+	SOAExpire  uint32   `json:"soa_expire"`
+	SOAMinimum uint32   `json:"soa_minimum"`
 }
 
 type SOAMName struct {
+	Name string `json:"name"`
+}
+
+// View represents a netbox-dns view. Only the fields the plugin actually
+// consumes are decoded; the upstream API returns more.
+type View struct {
+	ID   int    `json:"id"`
 	Name string `json:"name"`
 }
 
@@ -24,8 +43,16 @@ func urlZoneID(netboxurl *url.URL, id int) *url.URL {
 	return netboxurl.JoinPath("zones", "/", strconv.Itoa(id), "/")
 }
 
-func GetZones(requestClient *APIRequestClient) ([]Zone, error) {
+// GetZones returns the zones managed by netbox-dns. When viewName is non-empty
+// the result is filtered server-side to that view (NetBox supports
+// `?view=<name>` on /api/plugins/netbox-dns/zones/).
+func GetZones(requestClient *APIRequestClient, viewName string) ([]Zone, error) {
 	requestUrl := urlZones(requestClient.NetboxURL)
+	if viewName != "" {
+		q := requestUrl.Query()
+		q.Set("view", viewName)
+		requestUrl.RawQuery = q.Encode()
+	}
 	zones, err := getMany[Zone](requestClient, requestUrl.String())
 	if err != nil {
 		return nil, err

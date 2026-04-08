@@ -84,7 +84,7 @@ func (netboxdns *NetboxDNS) lookup(
 }
 
 func (netboxdns *NetboxDNS) matchZone(qname string) (*netbox.Zone, error) {
-	managedZones, err := netbox.GetZones(netboxdns.requestClient)
+	managedZones, err := netbox.GetZones(netboxdns.requestClient, netboxdns.viewName)
 	if err != nil {
 		return nil, err
 	}
