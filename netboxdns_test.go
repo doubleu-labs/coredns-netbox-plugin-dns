@@ -121,6 +121,7 @@ func RunTestLookupContainsCNAME(resp *dns.Msg) bool {
 }
 
 func ConfigureTokenAndPlugin(t *testing.T) {
+	requireNetbox(t)
 	if testInstanceToken != "" && netboxdnsPlugin != nil {
 		return
 	}
@@ -803,6 +804,7 @@ func TestUnauthorized(t *testing.T) {
 }
 
 func TestFallthrough(t *testing.T) {
+	requireNetbox(t)
 	netboxdns := NetboxDNS{
 		Next:  test.ErrorHandler(),
 		zones: []string{exampledotcomName},
