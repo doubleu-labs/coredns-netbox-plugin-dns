@@ -45,6 +45,11 @@ type NetboxDNS struct {
 	cache        *zonecache.Cache
 	stopPoller   chan struct{}
 	pollerDone   chan struct{}
+
+	// Catalog zone state. catalogTracker is always non-nil so the poller
+	// can call NextSerial without a guard; whether any catalog actually
+	// exists is decided per poll cycle by GetCatalogZones.
+	catalogTracker *catalogTracker
 }
 
 func NewNetboxDNS() *NetboxDNS {
@@ -54,9 +59,10 @@ func NewNetboxDNS() *NetboxDNS {
 				Timeout: defaultHTTPClientTimeout,
 			},
 		},
-		zones:        []string{"."},
-		pollInterval: defaultPollInterval,
-		ixfrHistory:  defaultIXFRHistory,
+		zones:          []string{"."},
+		pollInterval:   defaultPollInterval,
+		ixfrHistory:    defaultIXFRHistory,
+		catalogTracker: newCatalogTracker(),
 	}
 }
 

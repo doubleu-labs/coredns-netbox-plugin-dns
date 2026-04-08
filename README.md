@@ -28,6 +28,53 @@ To temporarily take a zone out of service without deleting it from
 NetBox, switch its status from `active` to `parked` — the plugin will
 stop serving it on the next poll cycle.
 
+### Catalog zones (RFC 9432)
+
+The plugin can serve [RFC 9432](https://www.rfc-editor.org/rfc/rfc9432.html)
+catalog zones to make secondaries auto-discover the list of zones they
+should transfer from this hidden primary. There is **no Corefile setting**
+for this — catalog publication is opt-in via a NetBox-side convention:
+
+> A zone is treated as a catalog **iff** its `status` is `parked` **and**
+> its name starts with `cat.` (case-insensitive).
+
+To turn it on, create a zone in NetBox (e.g. `cat.example.com`), set its
+status to `parked`, fill in `soa_mname`, `soa_rname` and the nameservers
+the same way you would for any normal zone, and put it in the same
+`view` as the member zones it should advertise. The plugin will:
+
+- list it via the catalog detection rule above,
+- synthesise the catalog content from every `active` zone in the same
+  view (one PTR per member, owner format `id-<netbox_zone_id>.zones.<catalog>.`,
+  plus the mandatory `version.<catalog>. TXT "2"` marker),
+- serve it via AXFR/IXFR through the same `transfer` plugin pipeline as
+  any other zone.
+
+The catalog SOA serial is **not** taken from NetBox; it is managed by an
+internal counter that starts at the unix time of plugin boot and only
+advances when the membership of the catalog actually changes (a member
+zone is added to / removed from the view). Per-zone record edits do not
+churn the catalog serial.
+
+Per-view catalogs are supported automatically: just create one
+`cat.<something>` zone in each view.
+
+Make sure your Corefile server block and the `transfer` directive list
+the catalog zone alongside the member zones, e.g.:
+
+```
+example.com cat.example.com:53 {
+    netboxdns example.com cat.example.com {
+        token TOKEN
+        url   URL
+        view  external
+    }
+    transfer example.com cat.example.com {
+        to *
+    }
+}
+```
+
 The account that the API token is tied to will need the following permissions:
 
 - `netbox_dns.view_zone`

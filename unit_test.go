@@ -32,6 +32,7 @@ func newMockPlugin(t *testing.T) (*http.ServeMux, *NetboxDNS) {
 			Token:     "test-token",
 			UserAgent: "netboxdns-unit-tests",
 		},
+		catalogTracker: newCatalogTracker(),
 	}
 }
 

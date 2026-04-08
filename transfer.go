@@ -38,6 +38,14 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (<-chan []dns.RR, error
 		return nil, transfer.ErrNotAuthoritative
 	}
 
+	// Catalog zones go through their own transfer path: their content is
+	// synthesised from active member zones rather than fetched from
+	// /records/, and their SOA serial comes from catalogTracker (which is
+	// reflected in the cache snapshot the poller wrote).
+	if isCatalogZone(nbZone) {
+		return n.transferCatalog(nbZone, serial)
+	}
+
 	soa := buildSOA(nbZone, dns.Fqdn(nbZone.Name))
 
 	// IXFR no-op: requester already has the current (or newer) serial.
@@ -96,6 +104,63 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (<-chan []dns.RR, error
 		ch <- []dns.RR{soa}
 	}()
 
+	return ch, nil
+}
+
+// transferCatalog serves AXFR/IXFR for a catalog zone. The catalog body
+// is taken from the snapshot cache when available; on a cold start (cache
+// disabled or never populated for this catalog) we build it inline by
+// fetching the active member zones once. The IXFR delta path is the same
+// streamIXFR helper used by member zones — diff/cache code does not need
+// to know that this is a catalog.
+func (n *NetboxDNS) transferCatalog(catalog *netbox.Zone, serial uint32) (<-chan []dns.RR, error) {
+	var (
+		latest zonecache.Snapshot
+		hasCached bool
+	)
+	if n.cache != nil {
+		latest, hasCached = n.cache.Latest(catalog.Name)
+	}
+	if !hasCached {
+		members, err := netbox.GetZones(n.requestClient, n.viewName)
+		if err != nil {
+			return nil, err
+		}
+		latest = zonecache.Snapshot{
+			Serial: n.catalogTracker.NextSerial(catalog.Name, members),
+			RRs:    buildCatalog(catalog, members),
+		}
+		if n.cache != nil {
+			n.cache.Put(catalog.Name, latest.Serial, latest.RRs)
+		}
+	}
+
+	soa := buildSOAWithSerial(catalog, dns.Fqdn(catalog.Name), latest.Serial)
+
+	// IXFR no-op.
+	if serial != 0 && serial >= latest.Serial {
+		ch := make(chan []dns.RR, 1)
+		ch <- []dns.RR{soa}
+		close(ch)
+		return ch, nil
+	}
+
+	// IXFR delta from cache.
+	if serial != 0 && n.cache != nil {
+		if from, to, ok := n.cache.Diff(catalog.Name, serial); ok && to.Serial == latest.Serial {
+			oldSOA := buildSOAWithSerial(catalog, dns.Fqdn(catalog.Name), from.Serial)
+			return n.streamIXFR(soa, oldSOA, from, to), nil
+		}
+	}
+
+	// AXFR / IXFR fallback.
+	ch := make(chan []dns.RR)
+	go func() {
+		defer close(ch)
+		ch <- []dns.RR{soa}
+		sendBatched(ch, latest.RRs)
+		ch <- []dns.RR{soa}
+	}()
 	return ch, nil
 }
 
@@ -169,9 +234,10 @@ func buildSOA(zone *netbox.Zone, fqdn string) *dns.SOA {
 }
 
 // findZone returns the (single) zone whose Name matches name (case
-// insensitive). The lookup honours the configured view filter so a hidden
-// primary only sees the zones it is meant to serve. Returns (nil, nil) when
-// no zone matches.
+// insensitive). It looks first at active member zones and then at catalog
+// zones (parked + cat.* prefix). The lookup honours the configured view
+// filter so a hidden primary only sees the zones it is meant to serve.
+// Returns (nil, nil) when no zone matches.
 func (n *NetboxDNS) findZone(name string) (*netbox.Zone, error) {
 	zones, err := netbox.GetZones(n.requestClient, n.viewName)
 	if err != nil {
@@ -182,5 +248,21 @@ func (n *NetboxDNS) findZone(name string) (*netbox.Zone, error) {
 			return &zones[i], nil
 		}
 	}
+	catalogs, err := netbox.GetCatalogZones(n.requestClient, n.viewName)
+	if err != nil {
+		return nil, err
+	}
+	for i := range catalogs {
+		if strings.EqualFold(catalogs[i].Name, name) {
+			return &catalogs[i], nil
+		}
+	}
 	return nil, nil
+}
+
+// isCatalogZone reports whether a NetBox zone is a catalog zone declared
+// via the "parked status + cat. name prefix" convention.
+func isCatalogZone(z *netbox.Zone) bool {
+	return z.Status == "parked" &&
+		strings.HasPrefix(strings.ToLower(z.Name), "cat.")
 }

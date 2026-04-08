@@ -55,12 +55,18 @@ func (n *NetboxDNS) stopPollerAndWait() {
 // fetch records for each, and write a snapshot if the SOA serial advanced.
 // The cache's own Put is idempotent on serial collisions, so we don't need
 // to track previous state separately.
+//
+// Catalog zones (status=parked AND name has prefix "cat.") are handled in
+// the same cycle: their content is synthesised from the active member
+// zones rather than fetched from /records/, and their SOA serial is
+// assigned by catalogTracker so it only bumps on real membership change.
 func (n *NetboxDNS) pollOnce() {
 	zones, err := netbox.GetZones(n.requestClient, n.viewName)
 	if err != nil {
 		logger.Errorf("poller: listing zones: %v", err)
 		return
 	}
+	n.pollCatalogs(zones)
 	for i := range zones {
 		z := &zones[i]
 		records, err := netbox.GetRecordsQuery(
@@ -86,5 +92,24 @@ func (n *NetboxDNS) pollOnce() {
 			continue
 		}
 		n.cache.Put(z.Name, z.SOASerial, rrs)
+	}
+}
+
+// pollCatalogs is the catalog-zone half of pollOnce. It fetches the
+// parked+cat.* zones in the configured view, synthesises their RFC 9432
+// content from the active member zones, and writes one snapshot per
+// catalog into the cache. Errors are logged and swallowed so a broken
+// catalog never knocks out the normal serving path.
+func (n *NetboxDNS) pollCatalogs(activeZones []netbox.Zone) {
+	catalogs, err := netbox.GetCatalogZones(n.requestClient, n.viewName)
+	if err != nil {
+		logger.Errorf("poller: listing catalog zones: %v", err)
+		return
+	}
+	for i := range catalogs {
+		c := &catalogs[i]
+		serial := n.catalogTracker.NextSerial(c.Name, activeZones)
+		rrs := buildCatalog(c, activeZones)
+		n.cache.Put(c.Name, serial, rrs)
 	}
 }
