@@ -95,17 +95,34 @@ Update `plugin.cfg` in the root of the directory. The `netboxdns` declaration
 should be inserted after `cache` if you want responses from Netbox to be
 cached.
 
+> **Important:** if you intend to serve outgoing zone transfers (AXFR/IXFR)
+> via the CoreDNS `transfer` plugin, `netboxdns` MUST be listed **after**
+> `transfer:transfer` in `plugin.cfg`. Otherwise the AXFR query is handled
+> by `netboxdns`'s normal `ServeDNS` lookup path (which forwards
+> `?type=AXFR` to NetBox and gets a 400) instead of being routed to the
+> plugin's `Transfer()` implementation.
+
 ```sh
-# Using sed
-sed -i '/^cache:cache/a netboxdns:github.com/doubleu-labs/coredns-netbox-plugin-dns' plugin.cfg
+# Using sed (insert after transfer so AXFR/IXFR works)
+sed -i '/^transfer:transfer/a netboxdns:github.com/doubleu-labs/coredns-netbox-plugin-dns' plugin.cfg
 ```
 
 ```powershell
 # Using Powershell
 (Get-Content plugin.cfg).`
-Replace("cache:cache", "cache:cache`nnetboxdns:github.com/doubleu-labs/coredns-netbox-plugin-dns") | `
+Replace("transfer:transfer", "transfer:transfer`nnetboxdns:github.com/doubleu-labs/coredns-netbox-plugin-dns") | `
 Set-Content -Path plugin.cfg
 ```
+
+### A note on the API authentication header
+
+This plugin sends NetBox API requests with `Authorization: Bearer <token>`
+rather than the legacy `Authorization: Token <token>` form. NetBox 4.x
+accepts both, but `Bearer` is the form standardised by RFC 6750 and is
+what newer NetBox-side tooling expects, so it is preferred going forward.
+No configuration change is required on your side — just be aware when
+auditing access logs or comparing against older examples that use
+`Token <token>`.
 
 Build using `make`:
 
