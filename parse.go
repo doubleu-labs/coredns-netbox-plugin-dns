@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/coredns/caddy"
@@ -22,7 +23,9 @@ func init() {
 		"tls":         parseTLS,
 		"token":       parseToken,
 		"url":         parseUrl,
-		"view":        parseView,
+		"view":          parseView,
+		"poll_interval": parsePollInterval,
+		"ixfr_history":  parseIXFRHistory,
 	}
 }
 
@@ -166,6 +169,36 @@ func parseView(controller *caddy.Controller, netboxdns *NetboxDNS) error {
 		return controller.Err(`no value for "view" provided`)
 	}
 	netboxdns.viewName = controller.Val()
+	return nil
+}
+
+func parsePollInterval(controller *caddy.Controller, netboxdns *NetboxDNS) error {
+	if !controller.NextArg() {
+		return controller.Err(`no value for "poll_interval" provided`)
+	}
+	d, err := time.ParseDuration(controller.Val())
+	if err != nil {
+		return controller.Errf(`invalid "poll_interval": %q`, err.Error())
+	}
+	if d <= 0 {
+		return controller.Err(`"poll_interval" must be > 0`)
+	}
+	netboxdns.pollInterval = d
+	return nil
+}
+
+func parseIXFRHistory(controller *caddy.Controller, netboxdns *NetboxDNS) error {
+	if !controller.NextArg() {
+		return controller.Err(`no value for "ixfr_history" provided`)
+	}
+	n, err := strconv.Atoi(controller.Val())
+	if err != nil {
+		return controller.Errf(`invalid "ixfr_history": %q`, err.Error())
+	}
+	if n < 0 {
+		return controller.Err(`"ixfr_history" must be >= 0`)
+	}
+	netboxdns.ixfrHistory = n
 	return nil
 }
 

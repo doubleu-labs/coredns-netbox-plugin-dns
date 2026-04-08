@@ -33,6 +33,16 @@ func setup(controller *caddy.Controller) error {
 			return netboxdns
 		},
 	)
+
+	controller.OnStartup(func() error {
+		netboxdns.startPoller()
+		return nil
+	})
+	controller.OnShutdown(func() error {
+		netboxdns.stopPollerAndWait()
+		return nil
+	})
+
 	logger.Info("successfully started netboxdns")
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/coredns/coredns/plugin/transfer"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/zonecache"
 	"github.com/miekg/dns"
 )
 
@@ -47,6 +48,15 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (<-chan []dns.RR, error
 		return ch, nil
 	}
 
+	// IXFR delta: try to satisfy from the snapshot cache. The cache is
+	// only populated when the poller is enabled (ixfr_history > 0).
+	if serial != 0 && n.cache != nil {
+		if from, to, ok := n.cache.Diff(nbZone.Name, serial); ok && to.Serial == nbZone.SOASerial {
+			oldSOA := buildSOAWithSerial(nbZone, dns.Fqdn(nbZone.Name), from.Serial)
+			return n.streamIXFR(soa, oldSOA, from, to), nil
+		}
+	}
+
 	ch := make(chan []dns.RR)
 	go func() {
 		defer close(ch)
@@ -79,14 +89,7 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (<-chan []dns.RR, error
 		// Opening SOA.
 		ch <- []dns.RR{soa}
 
-		// Body in batches.
-		for start := 0; start < len(rrs); start += transferBatchSize {
-			end := start + transferBatchSize
-			if end > len(rrs) {
-				end = len(rrs)
-			}
-			ch <- rrs[start:end]
-		}
+		sendBatched(ch, rrs)
 
 		// Closing SOA (RFC 5936 §2.2 — "the last RR sent in the answer
 		// section MUST also be the SOA").
@@ -94,6 +97,56 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (<-chan []dns.RR, error
 	}()
 
 	return ch, nil
+}
+
+// streamIXFR returns an RFC 1995 §4 incremental transfer message:
+//
+//	newSOA
+//	oldSOA  <removed RRs...>  newSOA  <added RRs...>
+//	newSOA
+//
+// Removed and added blocks are computed by zonecache.Diff. The body is sent
+// in the same fixed-size batches as AXFR so the wire framing is consistent.
+func (n *NetboxDNS) streamIXFR(
+	newSOA *dns.SOA,
+	oldSOA *dns.SOA,
+	from zonecache.Snapshot,
+	to zonecache.Snapshot,
+) <-chan []dns.RR {
+	removed, added := zonecache.Diff(from.RRs, to.RRs)
+
+	ch := make(chan []dns.RR)
+	go func() {
+		defer close(ch)
+		ch <- []dns.RR{newSOA}
+		ch <- []dns.RR{oldSOA}
+		sendBatched(ch, removed)
+		ch <- []dns.RR{newSOA}
+		sendBatched(ch, added)
+		ch <- []dns.RR{newSOA}
+	}()
+	return ch
+}
+
+// sendBatched chunks rrs into the transfer channel. Empty input is a no-op
+// (an empty removed or added section is valid in IXFR).
+func sendBatched(ch chan<- []dns.RR, rrs []dns.RR) {
+	for start := 0; start < len(rrs); start += transferBatchSize {
+		end := start + transferBatchSize
+		if end > len(rrs) {
+			end = len(rrs)
+		}
+		ch <- rrs[start:end]
+	}
+}
+
+// buildSOAWithSerial returns a *dns.SOA identical to buildSOA(zone, fqdn)
+// but with the Serial field overridden. Used to construct the "old" SOA
+// that opens each IXFR difference sequence (RFC 1995 §4).
+func buildSOAWithSerial(zone *netbox.Zone, fqdn string, serial uint32) *dns.SOA {
+	soa := buildSOA(zone, fqdn)
+	soa.Serial = serial
+	return soa
 }
 
 // buildSOA constructs a *dns.SOA from a NetBox Zone's SOA fields.

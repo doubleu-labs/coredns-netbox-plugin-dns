@@ -1,0 +1,90 @@
+package netboxdns
+
+import (
+	"time"
+
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/zonecache"
+)
+
+// startPoller spins up the IXFR snapshot poller goroutine. It is a no-op
+// when ixfrHistory == 0 (IXFR delta path disabled — Transfer falls back to
+// AXFR for stale serials).
+//
+// One immediate poll runs synchronously *after* the goroutine starts so the
+// cache is warm enough to satisfy the first IXFR request without racing the
+// first tick. Errors are logged and swallowed: the poller must never crash
+// the plugin.
+func (n *NetboxDNS) startPoller() {
+	if n.ixfrHistory <= 0 {
+		return
+	}
+	n.cache = zonecache.New(n.ixfrHistory)
+	n.stopPoller = make(chan struct{})
+	n.pollerDone = make(chan struct{})
+
+	go func() {
+		defer close(n.pollerDone)
+		n.pollOnce()
+		t := time.NewTicker(n.pollInterval)
+		defer t.Stop()
+		for {
+			select {
+			case <-n.stopPoller:
+				return
+			case <-t.C:
+				n.pollOnce()
+			}
+		}
+	}()
+}
+
+// stopPollerAndWait signals the poller goroutine to exit and blocks until it
+// has done so. Safe to call when the poller was never started.
+func (n *NetboxDNS) stopPollerAndWait() {
+	if n.stopPoller == nil {
+		return
+	}
+	close(n.stopPoller)
+	<-n.pollerDone
+	n.stopPoller = nil
+	n.pollerDone = nil
+}
+
+// pollOnce performs one poll cycle: list zones in the configured view,
+// fetch records for each, and write a snapshot if the SOA serial advanced.
+// The cache's own Put is idempotent on serial collisions, so we don't need
+// to track previous state separately.
+func (n *NetboxDNS) pollOnce() {
+	zones, err := netbox.GetZones(n.requestClient, n.viewName)
+	if err != nil {
+		logger.Errorf("poller: listing zones: %v", err)
+		return
+	}
+	for i := range zones {
+		z := &zones[i]
+		records, err := netbox.GetRecordsQuery(
+			n.requestClient,
+			&netbox.RecordQuery{Zone: z},
+		)
+		if err != nil {
+			logger.Errorf("poller: fetching records for %s: %v", z.Name, err)
+			continue
+		}
+		// Drop SOA records — Transfer synthesises them. Storing them in
+		// the snapshot would only add noise to diffs.
+		filtered := make([]netbox.Record, 0, len(records))
+		for k := range records {
+			if records[k].Type == "SOA" {
+				continue
+			}
+			filtered = append(filtered, records[k])
+		}
+		rrs, err := recordsToRR(filtered)
+		if err != nil {
+			logger.Errorf("poller: converting records for %s: %v", z.Name, err)
+			continue
+		}
+		n.cache.Put(z.Name, z.SOASerial, rrs)
+	}
+}

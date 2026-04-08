@@ -10,12 +10,16 @@ import (
 	"github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/request"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/zonecache"
 	"github.com/miekg/dns"
 )
 
 const (
 	defaultHTTPClientTimeout time.Duration = time.Second * 5
 	pluginName               string        = "netboxdns"
+
+	defaultPollInterval time.Duration = 300 * time.Second
+	defaultIXFRHistory  int           = 16
 )
 
 var logger log.P
@@ -32,6 +36,15 @@ type NetboxDNS struct {
 	zones    []string
 	fall     fall.F
 	viewName string
+
+	// IXFR snapshot history. ixfrHistory == 0 disables the poller and the
+	// IXFR delta path entirely (Transfer falls back to AXFR for stale
+	// serials, which is the Phase 2 behaviour).
+	pollInterval time.Duration
+	ixfrHistory  int
+	cache        *zonecache.Cache
+	stopPoller   chan struct{}
+	pollerDone   chan struct{}
 }
 
 func NewNetboxDNS() *NetboxDNS {
@@ -41,7 +54,9 @@ func NewNetboxDNS() *NetboxDNS {
 				Timeout: defaultHTTPClientTimeout,
 			},
 		},
-		zones: []string{"."},
+		zones:        []string{"."},
+		pollInterval: defaultPollInterval,
+		ixfrHistory:  defaultIXFRHistory,
 	}
 }
 
