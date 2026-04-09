@@ -90,7 +90,11 @@ netboxdns [ZONES...] {
     url URL
     timeout DURATION
     fallthrough [ZONES...]
-    tls CERT KET CACERT
+    tls CERT KEY CACERT
+    view VIEWS...
+    view_exclude VIEWS...
+    poll_interval DURATION
+    ixfr_history COUNT
 }
 ```
 
@@ -131,6 +135,26 @@ Netbox API
     needed to authenticate to the Netbox instance (mTLS) and Netbox is using a
     server certificate signed by a private CA.
 
+- **`view VIEWS...`**: Space-delimited list of NetBox DNS view names. Only zones
+  belonging to these views will be served. When a single view is given, the
+  server-side API filter is used (efficient). With multiple views, all zones are
+  fetched and filtered client-side. Mutually exclusive with `view_exclude`.
+
+- **`view_exclude VIEWS...`**: Space-delimited list of NetBox DNS view names to
+  exclude. Zones from all other views will be served. Mutually exclusive with
+  `view`. Use this when it is easier to name the views you do *not* want than
+  those you do.
+
+- **`poll_interval DURATION`** (DEFAULT=`300s`): Interval between background
+  polls of the NetBox API. Each cycle fetches all zones and their records to
+  build IXFR snapshots. Set to a lower value (e.g. `10s`) for faster zone
+  convergence; higher values reduce NetBox API load.
+
+- **`ixfr_history COUNT`** (DEFAULT=`16`): Maximum number of IXFR snapshots
+  stored per zone. When a secondary requests an IXFR with a serial older than
+  the oldest snapshot, the plugin falls back to a full AXFR. Set to `0` to
+  disable the poller entirely (AXFR-only mode).
+
 ## Metrics
 
 When the CoreDNS `prometheus` plugin is enabled, `netboxdns` exports the
@@ -148,6 +172,68 @@ following collectors (all under the `coredns_netboxdns_` prefix):
 | `zone_serial` | gauge | `zone` | Last observed SOA serial of each zone (catalog zones included). |
 | `cache_snapshots` | gauge | `zone` | Snapshots currently held in the IXFR ring buffer. |
 | `catalog_members` | gauge | `catalog` | Member zones currently published in each catalog zone. |
+
+## Architecture
+
+```
+NetBox + netbox-plugin-dns (source of truth)
+    │
+    │ REST API (poll every poll_interval + on-demand per query)
+    ▼
+CoreDNS + netboxdns plugin (hidden primary)
+    │
+    ├── DNS queries     ← recursive resolvers
+    ├── AXFR / IXFR     → secondary DNS servers (BIND / Knot / NSD)
+    ├── Catalog zone    → automatic zone discovery for secondaries
+    └── /metrics        → Prometheus → Grafana
+```
+
+- Every DNS query triggers a NetBox API call for zone matching and record
+  lookup. Use the CoreDNS `cache` plugin in the same server block to reduce
+  API traffic.
+- The poller runs in the background at `poll_interval`, fetching all zones and
+  records to build IXFR snapshots. When a secondary requests an incremental
+  transfer, the diff is computed from these snapshots.
+- If NetBox is unavailable, queries fail with SERVFAIL. Mitigate with the
+  `cache` plugin (serves stale entries) or a recursive resolver with
+  serve-stale support.
+- Zone transfers serve data from the snapshot cache when available, falling
+  back to live API calls.
+
+## Example: Hidden Primary with Zone Transfers
+
+A production-ready Corefile for a hidden primary that serves zones from the
+`external` NetBox view, supports AXFR/IXFR for secondaries, publishes a
+catalog zone for automatic zone discovery, and exports Prometheus metrics:
+
+```nginx
+example.com cat.example.com:53 {
+    netboxdns example.com cat.example.com {
+        token   {$NETBOX_API_TOKEN}
+        url     https://netbox.example.com
+        view    external
+        timeout 10s
+        tls     /etc/ssl/certs/ca.pem
+        poll_interval  60s
+        ixfr_history   20
+    }
+    transfer example.com cat.example.com {
+        to 10.0.0.50 10.0.0.51
+    }
+    cache 30
+    prometheus :9153
+    log
+    errors
+}
+```
+
+- **netboxdns** — resolves queries and provides zone data from NetBox
+- **transfer** — serves AXFR/IXFR to the listed secondary IPs (use `to *`
+  to allow any requestor)
+- **cache** — caches responses for 30 seconds, reducing NetBox API load
+- **prometheus** — exports metrics on `:9153/metrics`
+- The catalog zone (`cat.example.com`) must be listed in both the server
+  block keys and the `transfer` directive
 
 ## Building
 
@@ -200,6 +286,16 @@ what newer NetBox-side tooling expects, so it is preferred going forward.
 No configuration change is required on your side — just be aware when
 auditing access logs or comparing against older examples that use
 `Token <token>`.
+
+> **Note:** The latest tagged release (`v0.2.1`) has a known bug with
+> A/AAAA record resolution. Until a new release is tagged, build from the
+> `main` branch using `go mod replace`:
+>
+> ```sh
+> git clone https://github.com/doubleu-labs/coredns-netbox-plugin-dns.git /tmp/netboxdns
+> cd coredns
+> go mod edit -replace github.com/doubleu-labs/coredns-netbox-plugin-dns=/tmp/netboxdns
+> ```
 
 Build using `make`:
 

@@ -33,9 +33,11 @@ type NetboxDNS struct {
 
 	requestClient *netbox.APIRequestClient
 
-	zones    []string
-	fall     fall.F
-	viewName string
+	zones       []string
+	fall        fall.F
+	viewName    string   // single-view (server-side filter)
+	viewNames   []string // multi-view whitelist (client-side filter)
+	viewExclude []string // view blacklist (client-side filter)
 
 	// IXFR snapshot history. ixfrHistory == 0 disables the poller and the
 	// IXFR delta path entirely (Transfer falls back to AXFR for stale
@@ -78,6 +80,15 @@ func (netboxdns *NetboxDNS) ServeDNS(
 	reqMsg *dns.Msg,
 ) (int, error) {
 	state := request.Request{W: respWriter, Req: reqMsg}
+
+	// Zone transfer requests must be handled by the transfer plugin, not
+	// here. This guard ensures correct behavior regardless of plugin.cfg
+	// ordering — if netboxdns is accidentally placed before transfer,
+	// AXFR/IXFR queries are forwarded instead of producing a 400 from NetBox.
+	if state.QType() == dns.TypeAXFR || state.QType() == dns.TypeIXFR {
+		return netboxdns.nextOrFailure(reqContext, respWriter, reqMsg)
+	}
+
 	qname := state.QName()
 	family := state.Family()
 	qtype := fixQType(state.QType(), family)
@@ -95,6 +106,24 @@ func (netboxdns *NetboxDNS) ServeDNS(
 	defer func() {
 		requestDuration.WithLabelValues(respondingZone).Observe(time.Since(start).Seconds())
 	}()
+
+	// Catalog zones are status=parked so the normal lookup path (which
+	// calls matchZone → GetZones with status=active) would return
+	// NXDOMAIN. Handle SOA and NS queries for catalogs here so
+	// secondaries can poll the SOA serial before initiating AXFR.
+	if qtype == dns.TypeSOA || qtype == dns.TypeNS {
+		if resp, err := netboxdns.serveCatalogMeta(qname, qtype); err != nil {
+			requestsTotal.WithLabelValues(respondingZone, rcodeLabel(dns.RcodeServerFailure)).Inc()
+			return dns.RcodeServerFailure, err
+		} else if resp != nil {
+			respMsg := &dns.Msg{Answer: resp.Answer, Ns: resp.Ns}
+			respMsg.SetReply(reqMsg)
+			respMsg.Authoritative = true
+			requestsTotal.WithLabelValues(respondingZone, rcodeLabel(dns.RcodeSuccess)).Inc()
+			respWriter.WriteMsg(respMsg)
+			return dns.RcodeSuccess, nil
+		}
+	}
 
 	response, err := netboxdns.lookup(qname, qtype, family)
 	if err != nil {

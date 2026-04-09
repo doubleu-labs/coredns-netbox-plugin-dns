@@ -133,7 +133,7 @@ func (n *NetboxDNS) transferCatalog(catalog *netbox.Zone, serial uint32) (<-chan
 		latest, hasCached = n.cache.Latest(catalog.Name)
 	}
 	if !hasCached {
-		members, err := netbox.GetZones(n.requestClient, n.viewName)
+		members, err := n.getActiveZones()
 		if err != nil {
 			return nil, err
 		}
@@ -253,7 +253,7 @@ func buildSOA(zone *netbox.Zone, fqdn string) *dns.SOA {
 // filter so a hidden primary only sees the zones it is meant to serve.
 // Returns (nil, nil) when no zone matches.
 func (n *NetboxDNS) findZone(name string) (*netbox.Zone, error) {
-	zones, err := netbox.GetZones(n.requestClient, n.viewName)
+	zones, err := n.getActiveZones()
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +262,7 @@ func (n *NetboxDNS) findZone(name string) (*netbox.Zone, error) {
 			return &zones[i], nil
 		}
 	}
-	catalogs, err := netbox.GetCatalogZones(n.requestClient, n.viewName)
+	catalogs, err := n.getCatalogZones()
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package netboxdns
 
 import (
+	"strings"
 	"time"
 
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
@@ -65,7 +66,7 @@ func (n *NetboxDNS) pollOnce() {
 	defer func() {
 		pollDuration.Observe(time.Since(start).Seconds())
 	}()
-	zones, err := netbox.GetZones(n.requestClient, n.viewName)
+	zones, err := n.getActiveZones()
 	if err != nil {
 		pollCyclesTotal.WithLabelValues("error").Inc()
 		logger.Errorf("poller: listing zones: %v", err)
@@ -109,7 +110,7 @@ func (n *NetboxDNS) pollOnce() {
 // catalog into the cache. Errors are logged and swallowed so a broken
 // catalog never knocks out the normal serving path.
 func (n *NetboxDNS) pollCatalogs(activeZones []netbox.Zone) {
-	catalogs, err := netbox.GetCatalogZones(n.requestClient, n.viewName)
+	catalogs, err := n.getCatalogZones()
 	if err != nil {
 		logger.Errorf("poller: listing catalog zones: %v", err)
 		return
@@ -126,12 +127,13 @@ func (n *NetboxDNS) pollCatalogs(activeZones []netbox.Zone) {
 }
 
 // catalogMemberCount returns how many active zones from the same view are
-// published in the given catalog. Self-references are excluded so the gauge
-// matches the synthesised PTR count.
+// published in the given catalog. Uses the same name-based exclusion as
+// buildCatalog so the gauge exactly matches the synthesised PTR count.
 func catalogMemberCount(catalog *netbox.Zone, active []netbox.Zone) int {
+	cLower := strings.ToLower(strings.TrimSuffix(catalog.Name, "."))
 	n := 0
 	for i := range active {
-		if active[i].ID == catalog.ID {
+		if strings.EqualFold(active[i].Name, cLower) {
 			continue
 		}
 		n++

@@ -24,6 +24,7 @@ func init() {
 		"token":       parseToken,
 		"url":         parseUrl,
 		"view":          parseView,
+		"view_exclude":  parseViewExclude,
 		"poll_interval": parsePollInterval,
 		"ixfr_history":  parseIXFRHistory,
 	}
@@ -165,10 +166,29 @@ func parseUrl(controller *caddy.Controller, netboxdns *NetboxDNS) error {
 }
 
 func parseView(controller *caddy.Controller, netboxdns *NetboxDNS) error {
-	if !controller.NextArg() {
+	args := controller.RemainingArgs()
+	if len(args) == 0 {
 		return controller.Err(`no value for "view" provided`)
 	}
-	netboxdns.viewName = controller.Val()
+	if len(netboxdns.viewExclude) > 0 {
+		return controller.Err(`"view" and "view_exclude" are mutually exclusive`)
+	}
+	netboxdns.viewNames = args
+	if len(args) == 1 {
+		netboxdns.viewName = args[0]
+	}
+	return nil
+}
+
+func parseViewExclude(controller *caddy.Controller, netboxdns *NetboxDNS) error {
+	args := controller.RemainingArgs()
+	if len(args) == 0 {
+		return controller.Err(`no value for "view_exclude" provided`)
+	}
+	if len(netboxdns.viewNames) > 0 {
+		return controller.Err(`"view" and "view_exclude" are mutually exclusive`)
+	}
+	netboxdns.viewExclude = args
 	return nil
 }
 

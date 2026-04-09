@@ -84,20 +84,31 @@ func (netboxdns *NetboxDNS) lookup(
 }
 
 func (netboxdns *NetboxDNS) matchZone(qname string) (*netbox.Zone, error) {
-	managedZones, err := netbox.GetZones(netboxdns.requestClient, netboxdns.viewName)
+	managedZones, err := netboxdns.getActiveZones()
 	if err != nil {
 		return nil, err
 	}
 	var out *netbox.Zone
-	for _, managedZone := range managedZones {
+	var ambiguous int
+	for i := range managedZones {
+		managedZone := &managedZones[i]
 		if dns.IsSubDomain(managedZone.Name, qname) {
 			if out == nil {
-				out = &managedZone
+				out = managedZone
 			}
 			if len(managedZone.Name) > len(out.Name) {
-				out = &managedZone
+				out = managedZone
+			}
+			if strings.EqualFold(managedZone.Name, qname) {
+				ambiguous++
 			}
 		}
+	}
+	if ambiguous > 1 && len(netboxdns.viewNames) == 0 && len(netboxdns.viewExclude) == 0 {
+		logger.Warningf(
+			"zone %q exists in %d views; configure 'view' or 'view_exclude' to disambiguate",
+			qname, ambiguous,
+		)
 	}
 	return out, nil
 }

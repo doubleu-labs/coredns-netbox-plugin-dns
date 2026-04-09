@@ -28,13 +28,13 @@ func setup(controller *caddy.Controller) error {
 		base = http.DefaultTransport
 	}
 	netboxdns.requestClient.Client.Transport = &instrumentedTransport{base: base}
-	if netboxdns.viewName != "" {
-		// Fail fast on misconfiguration: NetBox returns HTTP 400 when an
-		// unknown view name is passed to /zones/?view=, so without this
-		// check every DNS query would silently produce SERVFAIL.
-		if _, err := netbox.GetZones(netboxdns.requestClient, netboxdns.viewName); err != nil {
+	// Fail fast on misconfiguration: NetBox returns HTTP 400 when an
+	// unknown view name is passed to /zones/?view=, so without this
+	// check every DNS query would silently produce SERVFAIL.
+	for _, vn := range netboxdns.viewNames {
+		if _, err := netbox.GetZones(netboxdns.requestClient, vn); err != nil {
 			return plugin.Error(pluginName, fmt.Errorf(
-				"validating netbox view %q: %w", netboxdns.viewName, err))
+				"validating netbox view %q: %w", vn, err))
 		}
 	}
 	dnsserver.GetConfig(controller).AddPlugin(
