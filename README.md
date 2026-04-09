@@ -90,7 +90,7 @@ netboxdns [ZONES...] {
     url URL
     timeout DURATION
     fallthrough [ZONES...]
-    tls CERT KEY CACERT
+    tls [CERT KEY [CACERT]]
     view VIEWS...
     view_exclude VIEWS...
     poll_interval DURATION

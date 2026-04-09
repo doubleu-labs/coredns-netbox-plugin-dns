@@ -13,7 +13,8 @@ import (
 // Prometheus metrics exported by the netboxdns plugin. Naming follows the
 // CoreDNS convention `coredns_<plugin>_<thing>`. All collectors live in this
 // file so the registration set is in one place; setup.go registers them
-// once via metrics.MustRegister.
+// once via promauto (registered on the default Prometheus registerer which
+// the CoreDNS `prometheus` plugin scrapes).
 var (
 	// ----- DNS serving path -------------------------------------------------
 
@@ -29,7 +30,7 @@ var (
 		Subsystem: pluginName,
 		Name:      "request_duration_seconds",
 		Help:      "Histogram of DNS request handling latency in netboxdns.",
-		Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 14),
+		Buckets:   plugin.TimeBuckets,
 	}, []string{"zone"})
 
 	// ----- NetBox API client ----------------------------------------------
