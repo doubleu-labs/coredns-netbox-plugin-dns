@@ -181,6 +181,105 @@ var setupTests []SetupTest = []SetupTest{
 		}`,
 		false,
 	},
+	{
+		"no value for view",
+		`netboxdns {
+			token sometoken
+			url http://localhost:9999/
+			view
+		}`,
+		true,
+	},
+	{
+		"valid poll_interval",
+		`netboxdns {
+			token sometoken
+			url http://localhost:9999/
+			poll_interval 30s
+		}`,
+		false,
+	},
+	{
+		"no value for poll_interval",
+		`netboxdns {
+			token sometoken
+			url http://localhost:9999/
+			poll_interval
+		}`,
+		true,
+	},
+	{
+		"invalid poll_interval value",
+		`netboxdns {
+			token sometoken
+			url http://localhost:9999/
+			poll_interval not-a-duration
+		}`,
+		true,
+	},
+	{
+		"negative poll_interval",
+		`netboxdns {
+			token sometoken
+			url http://localhost:9999/
+			poll_interval -5s
+		}`,
+		true,
+	},
+	{
+		"valid ixfr_history",
+		`netboxdns {
+			token sometoken
+			url http://localhost:9999/
+			ixfr_history 32
+		}`,
+		false,
+	},
+	{
+		"ixfr_history zero disables poller",
+		`netboxdns {
+			token sometoken
+			url http://localhost:9999/
+			ixfr_history 0
+		}`,
+		false,
+	},
+	{
+		"no value for ixfr_history",
+		`netboxdns {
+			token sometoken
+			url http://localhost:9999/
+			ixfr_history
+		}`,
+		true,
+	},
+	{
+		"invalid ixfr_history value",
+		`netboxdns {
+			token sometoken
+			url http://localhost:9999/
+			ixfr_history abc
+		}`,
+		true,
+	},
+	{
+		"negative ixfr_history",
+		`netboxdns {
+			token sometoken
+			url http://localhost:9999/
+			ixfr_history -1
+		}`,
+		true,
+	},
+	{
+		"no value for view_exclude",
+		`netboxdns {
+			token sometoken
+			url http://localhost:9999/
+			view_exclude
+		}`,
+		true,
+	},
 }
 
 func TestSetup(t *testing.T) {

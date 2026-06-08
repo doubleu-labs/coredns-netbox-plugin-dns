@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/coredns/caddy"
@@ -22,6 +23,10 @@ func init() {
 		"tls":         parseTLS,
 		"token":       parseToken,
 		"url":         parseUrl,
+		"view":          parseView,
+		"view_exclude":  parseViewExclude,
+		"poll_interval": parsePollInterval,
+		"ixfr_history":  parseIXFRHistory,
 	}
 }
 
@@ -157,6 +162,63 @@ func parseUrl(controller *caddy.Controller, netboxdns *NetboxDNS) error {
 		)
 	}
 	netboxdns.requestClient.NetboxURL = netboxUrl
+	return nil
+}
+
+func parseView(controller *caddy.Controller, netboxdns *NetboxDNS) error {
+	args := controller.RemainingArgs()
+	if len(args) == 0 {
+		return controller.Err(`no value for "view" provided`)
+	}
+	if len(netboxdns.viewExclude) > 0 {
+		return controller.Err(`"view" and "view_exclude" are mutually exclusive`)
+	}
+	netboxdns.viewNames = args
+	if len(args) == 1 {
+		netboxdns.viewName = args[0]
+	}
+	return nil
+}
+
+func parseViewExclude(controller *caddy.Controller, netboxdns *NetboxDNS) error {
+	args := controller.RemainingArgs()
+	if len(args) == 0 {
+		return controller.Err(`no value for "view_exclude" provided`)
+	}
+	if len(netboxdns.viewNames) > 0 {
+		return controller.Err(`"view" and "view_exclude" are mutually exclusive`)
+	}
+	netboxdns.viewExclude = args
+	return nil
+}
+
+func parsePollInterval(controller *caddy.Controller, netboxdns *NetboxDNS) error {
+	if !controller.NextArg() {
+		return controller.Err(`no value for "poll_interval" provided`)
+	}
+	d, err := time.ParseDuration(controller.Val())
+	if err != nil {
+		return controller.Errf(`invalid "poll_interval": %q`, err.Error())
+	}
+	if d <= 0 {
+		return controller.Err(`"poll_interval" must be > 0`)
+	}
+	netboxdns.pollInterval = d
+	return nil
+}
+
+func parseIXFRHistory(controller *caddy.Controller, netboxdns *NetboxDNS) error {
+	if !controller.NextArg() {
+		return controller.Err(`no value for "ixfr_history" provided`)
+	}
+	n, err := strconv.Atoi(controller.Val())
+	if err != nil {
+		return controller.Errf(`invalid "ixfr_history": %q`, err.Error())
+	}
+	if n < 0 {
+		return controller.Err(`"ixfr_history" must be >= 0`)
+	}
+	netboxdns.ixfrHistory = n
 	return nil
 }
 
