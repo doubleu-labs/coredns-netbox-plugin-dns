@@ -72,7 +72,7 @@ func TestFixQType(t *testing.T) {
 
 // ----- recordsToRR / recordToTXT / filterRRByType -----------------------
 
-func ttlPtr(v uint32) *uint32 { return &v }
+func ttlPtr(v uint32) *uint32 { return new(v) }
 
 func TestRecordsToRR_BasicTypes(t *testing.T) {
 	records := []netbox.Record{

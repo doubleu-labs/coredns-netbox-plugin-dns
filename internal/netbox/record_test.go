@@ -181,8 +181,7 @@ func TestResolveRecordTTLs_SkipsRecordsWithExplicitTTL(t *testing.T) {
 		t.Errorf("unexpected zone fetch: %s", r.URL.Path)
 		http.NotFound(w, r)
 	})
-	ttl := uint32(99)
-	records := []Record{{Type: "A", FQDN: "x.example.com.", Zone: Zone{ID: 1}, TTL: &ttl}}
+	records := []Record{{Type: "A", FQDN: "x.example.com.", Zone: Zone{ID: 1}, TTL: new(uint32(99))}}
 	out, err := resolveRecordTTLs(client, records)
 	if err != nil {
 		t.Fatalf("resolveRecordTTLs: %v", err)
