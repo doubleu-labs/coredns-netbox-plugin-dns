@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -59,16 +61,20 @@ func provisionToken(client *http.Client) {
 		log.Fatal(err)
 	}
 	var tokenProvisionResponse tokenProvisionResponse
-	defer closeBody(resp.Body)
 	err = json.NewDecoder(resp.Body).Decode(&tokenProvisionResponse)
 	if err != nil {
+		closeBody(resp.Body)
 		log.Fatal(err)
 	}
+	closeBody(resp.Body)
 	token = tokenProvisionResponse.String()
 }
 
 func closeFile(file *os.File) {
 	err := file.Close()
+	if errors.Is(err, fs.ErrClosed) {
+		return
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -96,10 +102,12 @@ func post(client *http.Client, path string, filepath string) (string, []byte) {
 		log.Fatal(err)
 	}
 	defer closeBody(resp.Body)
+
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	return resp.Status, content
 }
 
