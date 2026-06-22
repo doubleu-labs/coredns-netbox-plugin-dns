@@ -36,6 +36,13 @@ func init() {
 	execdir = filepath.Dir(filename)
 }
 
+func closeBody(body io.ReadCloser) {
+	err := body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func provisionToken(client *http.Client) {
 	payload := []byte(`{"username": "admin", "password": "admin"}`)
 	req, err := http.NewRequest(
@@ -52,10 +59,19 @@ func provisionToken(client *http.Client) {
 		log.Fatal(err)
 	}
 	var tokenProvisionResponse tokenProvisionResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tokenProvisionResponse); err != nil {
+	defer closeBody(resp.Body)
+	err = json.NewDecoder(resp.Body).Decode(&tokenProvisionResponse)
+	if err != nil {
 		log.Fatal(err)
 	}
 	token = tokenProvisionResponse.String()
+}
+
+func closeFile(file *os.File) {
+	err := file.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func post(client *http.Client, path string, filepath string) (string, []byte) {
@@ -63,7 +79,8 @@ func post(client *http.Client, path string, filepath string) (string, []byte) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer file.Close()
+	defer closeFile(file)
+
 	stat, _ := file.Stat()
 	req, err := http.NewRequest("POST", apiRoot+path, file)
 	if err != nil {
@@ -78,6 +95,7 @@ func post(client *http.Client, path string, filepath string) (string, []byte) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer closeBody(resp.Body)
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
