@@ -2,7 +2,9 @@ package netbox
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -14,15 +16,22 @@ type APIRequestClient struct {
 	UserAgent string
 }
 
-type APIResultModel interface {
-	Record | Zone
-}
-
-type APIManyResponse[T APIResultModel] struct {
+type APIManyResponse[T any] struct {
 	Count    int    `json:"count"`
 	Next     string `json:"next"`
 	Previous string `json:"previous"`
 	Results  []T    `json:"results"`
+}
+
+func closeResponseBody(body io.Closer, err *error, context string) {
+	if closeErr := body.Close(); closeErr != nil {
+		closeErr = fmt.Errorf("%s: %w", context, closeErr)
+		if *err != nil {
+			*err = errors.Join(*err, closeErr)
+			return
+		}
+		*err = closeErr
+	}
 }
 
 func doGet(
@@ -34,12 +43,10 @@ func doGet(
 		return nil, err
 	}
 
-	request.Header.Set(
-		"Authorization",
-		fmt.Sprintf("Bearer %s", requestClient.Token),
-	)
-
+	headerAuth := fmt.Sprintf("Bearer %s", requestClient.Token)
+	request.Header.Set("Authorization", headerAuth)
 	request.Header.Set("User-Agent", requestClient.UserAgent)
+
 	return requestClient.Client.Do(request)
 }
 
@@ -51,30 +58,35 @@ func responseError(response *http.Response) error {
 			response.Status,
 		)
 	}
+
 	return nil
 }
 
-func get[T APIResultModel](
+func get[T any](
 	requestClient *APIRequestClient,
 	url string,
 ) (T, error) {
 	var out T
+
 	response, err := doGet(requestClient, url)
 	if err != nil {
 		return out, err
 	}
-	defer response.Body.Close()
+
+	defer closeResponseBody(response.Body, &err, "response body")
 	if err := responseError(response); err != nil {
 		return out, err
 	}
+
 	decoder := json.NewDecoder(response.Body)
 	if err := decoder.Decode(&out); err != nil {
 		return out, fmt.Errorf("could not unmarshal response: %w", err)
 	}
+
 	return out, nil
 }
 
-func getMany[T APIResultModel](
+func getMany[T any](
 	requestClient *APIRequestClient,
 	url string,
 ) ([]T, error) {
@@ -82,28 +94,17 @@ func getMany[T APIResultModel](
 	var out []T
 
 	for nextUrl != "" {
-		response, err := doGet(requestClient, nextUrl)
+		resp, err := get[APIManyResponse[T]](requestClient, nextUrl)
 		if err != nil {
-			return out, err
-		}
-		defer response.Body.Close()
-
-		if err := responseError(response); err != nil {
-			return out, err
-		}
-
-		var apiResponse APIManyResponse[T]
-		decoder := json.NewDecoder(response.Body)
-		if err := decoder.Decode(&apiResponse); err != nil {
-			return out, fmt.Errorf("could not unmarshal response: %w", err)
+			return nil, err
 		}
 
 		if out == nil {
-			out = make([]T, 0, apiResponse.Count)
+			out = make([]T, 0, resp.Count)
 		}
-		out = append(out, apiResponse.Results...)
+		out = append(out, resp.Results...)
 
-		nextUrl = apiResponse.Next
+		nextUrl = resp.Next
 	}
 
 	return out, nil
