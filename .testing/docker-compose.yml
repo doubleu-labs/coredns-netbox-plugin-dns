@@ -18,11 +18,11 @@ services:
     - "9999:8080"
 
   postgres:
-    image: docker.io/library/postgres:17
+    image: docker.io/library/postgres:18
     env_file: env/postgres.env
   
   redis:
-    image: docker.io/valkey/valkey:8.1.1
+    image: docker.io/valkey/valkey:9.1.0
     command:
     - sh
     - -c
