@@ -34,22 +34,6 @@ func closeResponseBody(body io.Closer, err *error, context string) {
 	}
 }
 
-func doGet(
-	requestClient *Client,
-	url string,
-) (*http.Response, error) {
-	request, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	headerAuth := fmt.Sprintf("Bearer %s", requestClient.Token)
-	request.Header.Set("Authorization", headerAuth)
-	request.Header.Set("User-Agent", requestClient.UserAgent)
-
-	return requestClient.Client.Do(request)
-}
-
 func responseError(response *http.Response) error {
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf(
@@ -63,12 +47,18 @@ func responseError(response *http.Response) error {
 }
 
 func get[T any](
-	requestClient *Client,
+	client *Client,
 	url string,
 ) (T, error) {
 	var out T
 
-	response, err := doGet(requestClient, url)
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return out, err
+	}
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", client.Token))
+	request.Header.Set("User-Agent", client.UserAgent)
+	response, err := client.Client.Do(request)
 	if err != nil {
 		return out, err
 	}
