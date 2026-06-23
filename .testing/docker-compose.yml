@@ -30,7 +30,7 @@ services:
     env_file: env/redis.env
   
   redis-cache:
-    image: docker.io/valkey/valkey:8.1.1
+    image: docker.io/valkey/valkey:9.1.0
     command:
     - sh
     - -c
