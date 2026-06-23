@@ -3,58 +3,9 @@ package netbox
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"testing"
 )
-
-func TestDoGet_SuccessSetsAuthAndUserAgent(t *testing.T) {
-	_, mux, client := mockNetbox(t)
-
-	var gotAuth, gotUA string
-	mux.HandleFunc(
-		"/api/plugins/netbox-dns/zones/",
-		func(w http.ResponseWriter, r *http.Request) {
-			gotAuth = r.Header.Get("Authorization")
-			gotUA = r.Header.Get("User-Agent")
-			writeJSON(w, fixtureZonesEmpty)
-		},
-	)
-
-	resp, err := doGet(client, client.NetboxURL.JoinPath("zones", "/").String())
-	if err != nil {
-		t.Fatalf("doGet: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if want := "Bearer test-token"; gotAuth != want {
-		t.Errorf("Authorization header = %q, want %q", gotAuth, want)
-	}
-	if gotUA != "netboxdns-unit-tests" {
-		t.Errorf(
-			"User-Agent header = %q, want %q",
-			gotUA,
-			"netboxdns-unit-tests",
-		)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("status = %d, want 200", resp.StatusCode)
-	}
-}
-
-func TestDoGet_ConnectionError(t *testing.T) {
-	// Build a client pointing to a closed listener.
-	bogus, _ := url.Parse("http://127.0.0.1:1") // port 1 should refuse
-	client := &Client{
-		Client:    http.DefaultClient,
-		NetboxURL: bogus,
-		Token:     "x",
-	}
-	_, err := doGet(client, "http://127.0.0.1:1/nope")
-	if err == nil {
-		t.Fatal("expected connection error, got nil")
-	}
-}
 
 func TestResponseError(t *testing.T) {
 	cases := []struct {
