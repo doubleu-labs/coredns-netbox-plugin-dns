@@ -16,7 +16,7 @@ type Client struct {
 	UserAgent string
 }
 
-type APIManyResponse[T any] struct {
+type ManyResponse[T any] struct {
 	Count    int    `json:"count"`
 	Next     string `json:"next"`
 	Previous string `json:"previous"`
@@ -94,7 +94,7 @@ func getMany[T any](
 	var out []T
 
 	for nextUrl != "" {
-		resp, err := get[APIManyResponse[T]](requestClient, nextUrl)
+		resp, err := get[ManyResponse[T]](requestClient, nextUrl)
 		if err != nil {
 			return nil, err
 		}
