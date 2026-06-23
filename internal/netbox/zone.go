@@ -37,12 +37,12 @@ type View struct {
 	Name string `json:"name"`
 }
 
-func urlZones(netboxurl *url.URL) *url.URL {
-	return netboxurl.JoinPath("zones", "/")
+func urlZones(u *url.URL) *url.URL {
+	return u.JoinPath("zones", "/")
 }
 
-func urlZoneID(netboxurl *url.URL, id int) *url.URL {
-	return netboxurl.JoinPath("zones", "/", strconv.Itoa(id), "/")
+func urlZoneID(u *url.URL, id int) *url.URL {
+	return u.JoinPath("zones", "/", strconv.Itoa(id), "/")
 }
 
 // GetCatalogZones returns zones tagged for catalog publication. The
@@ -54,15 +54,15 @@ func urlZoneID(netboxurl *url.URL, id int) *url.URL {
 //
 // Name-prefix filtering is done client-side because NetBox-dns has no
 // "zone name starts with" API filter.
-func GetCatalogZones(requestClient *Client, viewName string) ([]Zone, error) {
-	requestUrl := urlZones(requestClient.NetboxURL)
+func GetCatalogZones(c *Client, viewName string) ([]Zone, error) {
+	requestUrl := urlZones(c.NetboxURL)
 	q := requestUrl.Query()
 	q.Set("status", "parked")
 	if viewName != "" {
 		q.Set("view", viewName)
 	}
 	requestUrl.RawQuery = q.Encode()
-	all, err := getMany[Zone](requestClient, requestUrl.String())
+	all, err := getMany[Zone](c, requestUrl.String())
 	if err != nil {
 		return nil, err
 	}

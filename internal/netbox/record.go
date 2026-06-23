@@ -44,28 +44,25 @@ func (rq *RecordQuery) Encode() string {
 	return out.Encode()
 }
 
-func urlRecords(netboxurl *url.URL) *url.URL {
-	return netboxurl.JoinPath("records", "/")
+func urlRecords(u *url.URL) *url.URL {
+	return u.JoinPath("records", "/")
 }
 
-func GetRecordsQuery(
-	requestClient *Client,
-	query *RecordQuery,
-) ([]Record, error) {
-	requestUrl := urlRecords(requestClient.NetboxURL)
-	requestUrl.RawQuery = query.Encode()
-	records, err := getMany[Record](requestClient, requestUrl.String())
+func GetRecordsQuery(c *Client, q *RecordQuery) ([]Record, error) {
+	reqUrl := urlRecords(c.NetboxURL)
+	reqUrl.RawQuery = q.Encode()
+	records, err := getMany[Record](c, reqUrl.String())
 	if err != nil {
 		return nil, err
 	}
-	if query.Zone != nil {
+	if q.Zone != nil {
 		for k, record := range records {
 			if record.TTL == nil {
-				records[k].TTL = &query.Zone.DefaultTTL
+				records[k].TTL = &q.Zone.DefaultTTL
 			}
 		}
 	} else {
-		resolvedRecords, err := resolveRecordTTLs(requestClient, records)
+		resolvedRecords, err := resolveRecordTTLs(c, records)
 		if err != nil {
 			return records, err
 		}
@@ -74,26 +71,23 @@ func GetRecordsQuery(
 	return records, nil
 }
 
-func resolveRecordTTLs(
-	requestClient *Client,
-	records []Record,
-) ([]Record, error) {
+func resolveRecordTTLs(c *Client, r []Record) ([]Record, error) {
 	zoneTTL := make(map[int]uint32)
-	for k, record := range records {
+	for k, record := range r {
 		if record.TTL != nil {
 			continue
 		}
 		if ttl, ok := zoneTTL[record.Zone.ID]; ok {
-			records[k].TTL = &ttl
+			r[k].TTL = &ttl
 			continue
 		}
-		zoneUrl := urlZoneID(requestClient.NetboxURL, record.Zone.ID)
-		zone, err := get[Zone](requestClient, zoneUrl.String())
+		zoneUrl := urlZoneID(c.NetboxURL, record.Zone.ID)
+		zone, err := get[Zone](c, zoneUrl.String())
 		if err != nil {
-			return records, err
+			return r, err
 		}
 		zoneTTL[zone.ID] = zone.DefaultTTL
-		records[k].TTL = &zone.DefaultTTL
+		r[k].TTL = &zone.DefaultTTL
 	}
-	return records, nil
+	return r, nil
 }
