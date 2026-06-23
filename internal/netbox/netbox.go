@@ -45,7 +45,7 @@ func get[T any](c *Client, uri string) (T, error) {
 	if err != nil {
 		return out, err
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token.raw))
 	req.Header.Set("User-Agent", c.UserAgent)
 
 	resp, err := c.Client.Do(req)
