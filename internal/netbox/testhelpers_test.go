@@ -8,12 +8,12 @@ import (
 )
 
 // mockNetbox spins up an httptest.Server and returns it together with a
-// preconfigured APIRequestClient whose NetboxURL points at
+// preconfigured Client whose NetboxURL points at
 // <server>/api/plugins/netbox-dns/ (the same path Parse() builds in production).
 //
 // Tests register their handlers on the returned *http.ServeMux. The caller
 // must Close() the server (use t.Cleanup).
-func mockNetbox(t *testing.T) (*httptest.Server, *http.ServeMux, *APIRequestClient) {
+func mockNetbox(t *testing.T) (*httptest.Server, *http.ServeMux, *Client) {
 	t.Helper()
 	mux := http.NewServeMux()
 	srv := httptest.NewServer(mux)
@@ -23,7 +23,7 @@ func mockNetbox(t *testing.T) (*httptest.Server, *http.ServeMux, *APIRequestClie
 	if err != nil {
 		t.Fatalf("parse mock url: %v", err)
 	}
-	client := &APIRequestClient{
+	client := &Client{
 		Client:    srv.Client(),
 		NetboxURL: base,
 		Token:     "test-token",

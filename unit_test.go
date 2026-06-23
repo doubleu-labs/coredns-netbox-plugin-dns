@@ -26,7 +26,7 @@ func newMockPlugin(t *testing.T) (*http.ServeMux, *NetboxDNS) {
 	}
 	return mux, &NetboxDNS{
 		zones: []string{"."},
-		requestClient: &netbox.APIRequestClient{
+		requestClient: &netbox.Client{
 			Client:    srv.Client(),
 			NetboxURL: base,
 			Token:     "test-token",
@@ -60,13 +60,17 @@ func TestFixQType(t *testing.T) {
 		{"NS unchanged", dns.TypeNS, 1, dns.TypeNS},
 	}
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := fixQType(tc.qtype, tc.family)
-			if got != tc.want {
-				t.Errorf("fixQType(%d, %d) = %d, want %d",
-					tc.qtype, tc.family, got, tc.want)
-			}
-		})
+		t.Run(
+			tc.name, func(t *testing.T) {
+				got := fixQType(tc.qtype, tc.family)
+				if got != tc.want {
+					t.Errorf(
+						"fixQType(%d, %d) = %d, want %d",
+						tc.qtype, tc.family, got, tc.want,
+					)
+				}
+			},
+		)
 	}
 }
 
@@ -76,13 +80,48 @@ func ttlPtr(v uint32) *uint32 { return new(v) }
 
 func TestRecordsToRR_BasicTypes(t *testing.T) {
 	records := []netbox.Record{
-		{Type: "A", FQDN: "host.example.com.", AbsoluteValue: "10.0.0.1", TTL: ttlPtr(60)},
-		{Type: "AAAA", FQDN: "host.example.com.", AbsoluteValue: "2001:db8::1", TTL: ttlPtr(60)},
-		{Type: "CNAME", FQDN: "www.example.com.", AbsoluteValue: "host.example.com.", TTL: ttlPtr(300)},
-		{Type: "MX", FQDN: "example.com.", AbsoluteValue: "10 mail.example.com.", TTL: ttlPtr(300)},
-		{Type: "NS", FQDN: "example.com.", AbsoluteValue: "ns1.example.com.", TTL: ttlPtr(3600)},
-		{Type: "PTR", FQDN: "1.0.0.10.in-addr.arpa.", AbsoluteValue: "host.example.com.", TTL: ttlPtr(3600)},
-		{Type: "SRV", FQDN: "_sip._tcp.example.com.", AbsoluteValue: "10 20 5060 sip.example.com.", TTL: ttlPtr(300)},
+		{
+			Type:          "A",
+			FQDN:          "host.example.com.",
+			AbsoluteValue: "10.0.0.1",
+			TTL:           ttlPtr(60),
+		},
+		{
+			Type:          "AAAA",
+			FQDN:          "host.example.com.",
+			AbsoluteValue: "2001:db8::1",
+			TTL:           ttlPtr(60),
+		},
+		{
+			Type:          "CNAME",
+			FQDN:          "www.example.com.",
+			AbsoluteValue: "host.example.com.",
+			TTL:           ttlPtr(300),
+		},
+		{
+			Type:          "MX",
+			FQDN:          "example.com.",
+			AbsoluteValue: "10 mail.example.com.",
+			TTL:           ttlPtr(300),
+		},
+		{
+			Type:          "NS",
+			FQDN:          "example.com.",
+			AbsoluteValue: "ns1.example.com.",
+			TTL:           ttlPtr(3600),
+		},
+		{
+			Type:          "PTR",
+			FQDN:          "1.0.0.10.in-addr.arpa.",
+			AbsoluteValue: "host.example.com.",
+			TTL:           ttlPtr(3600),
+		},
+		{
+			Type:          "SRV",
+			FQDN:          "_sip._tcp.example.com.",
+			AbsoluteValue: "10 20 5060 sip.example.com.",
+			TTL:           ttlPtr(300),
+		},
 	}
 	rrs, err := recordsToRR(records)
 	if err != nil {
@@ -116,12 +155,14 @@ func TestRecordsToRR_BasicTypes(t *testing.T) {
 }
 
 func TestRecordsToRR_SOA(t *testing.T) {
-	records := []netbox.Record{{
-		Type:          "SOA",
-		FQDN:          "example.com.",
-		AbsoluteValue: "ns1.example.com. admin.example.com. 1 43200 7200 2419200 3600",
-		TTL:           ttlPtr(86400),
-	}}
+	records := []netbox.Record{
+		{
+			Type:          "SOA",
+			FQDN:          "example.com.",
+			AbsoluteValue: "ns1.example.com. admin.example.com. 1 43200 7200 2419200 3600",
+			TTL:           ttlPtr(86400),
+		},
+	}
 	rrs, err := recordsToRR(records)
 	if err != nil {
 		t.Fatalf("recordsToRR: %v", err)
@@ -136,12 +177,14 @@ func TestRecordsToRR_SOA(t *testing.T) {
 }
 
 func TestRecordsToRR_InvalidValue(t *testing.T) {
-	records := []netbox.Record{{
-		Type:          "A",
-		FQDN:          "bad.example.com.",
-		AbsoluteValue: "not-an-ip",
-		TTL:           ttlPtr(60),
-	}}
+	records := []netbox.Record{
+		{
+			Type:          "A",
+			FQDN:          "bad.example.com.",
+			AbsoluteValue: "not-an-ip",
+			TTL:           ttlPtr(60),
+		},
+	}
 	_, err := recordsToRR(records)
 	if err == nil {
 		t.Fatal("expected parse error, got nil")
@@ -166,28 +209,46 @@ func TestRecordToTXT_SimpleAndMultiValue(t *testing.T) {
 	}{
 		{"plain", "hello world", []string{"hello world"}},
 		{"single quoted", `"hello"`, []string{"hello"}},
-		{"multi value", `"v=spf1" "include:_spf.example.com" "-all"`,
-			[]string{"v=spf1", "include:_spf.example.com", "-all"}},
-		{"with literal newlines stripped", `"line1\r\nline2"`, []string{"line1line2"}},
+		{
+			"multi value", `"v=spf1" "include:_spf.example.com" "-all"`,
+			[]string{"v=spf1", "include:_spf.example.com", "-all"},
+		},
+		{
+			"with literal newlines stripped",
+			`"line1\r\nline2"`,
+			[]string{"line1line2"},
+		},
 	}
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			rec := netbox.Record{
-				Type:          "TXT",
-				FQDN:          "txt.example.com.",
-				AbsoluteValue: tc.val,
-				TTL:           ttlPtr(60),
-			}
-			rr := recordToTXT(rec)
-			if len(rr.Txt) != len(tc.want) {
-				t.Fatalf("len = %d, want %d (%v)", len(rr.Txt), len(tc.want), rr.Txt)
-			}
-			for i := range tc.want {
-				if rr.Txt[i] != tc.want[i] {
-					t.Errorf("Txt[%d] = %q, want %q", i, rr.Txt[i], tc.want[i])
+		t.Run(
+			tc.name, func(t *testing.T) {
+				rec := netbox.Record{
+					Type:          "TXT",
+					FQDN:          "txt.example.com.",
+					AbsoluteValue: tc.val,
+					TTL:           ttlPtr(60),
 				}
-			}
-		})
+				rr := recordToTXT(rec)
+				if len(rr.Txt) != len(tc.want) {
+					t.Fatalf(
+						"len = %d, want %d (%v)",
+						len(rr.Txt),
+						len(tc.want),
+						rr.Txt,
+					)
+				}
+				for i := range tc.want {
+					if rr.Txt[i] != tc.want[i] {
+						t.Errorf(
+							"Txt[%d] = %q, want %q",
+							i,
+							rr.Txt[i],
+							tc.want[i],
+						)
+					}
+				}
+			},
+		)
 	}
 }
 
@@ -212,8 +273,11 @@ func TestFilterRRByType(t *testing.T) {
 
 func TestMatchZone(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, `{
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(
+				w, `{
             "count": 3,
             "next": null,
             "previous": null,
@@ -222,8 +286,10 @@ func TestMatchZone(t *testing.T) {
                 {"id": 2, "name": "sub.example.com", "default_ttl": 3600, "nameservers": []},
                 {"id": 3, "name": "example.org", "default_ttl": 3600, "nameservers": []}
             ]
-        }`)
-	})
+        }`,
+			)
+		},
+	)
 
 	cases := []struct {
 		name    string
@@ -237,29 +303,34 @@ func TestMatchZone(t *testing.T) {
 		{"other tld", "example.net", true, ""},
 	}
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			z, err := plugin.matchZone(tc.qname)
-			if err != nil {
-				t.Fatalf("matchZone: %v", err)
-			}
-			if tc.wantNil {
-				if z != nil {
-					t.Errorf("want nil, got %+v", z)
+		t.Run(
+			tc.name, func(t *testing.T) {
+				z, err := plugin.matchZone(tc.qname)
+				if err != nil {
+					t.Fatalf("matchZone: %v", err)
 				}
-				return
-			}
-			if z == nil || z.Name != tc.want {
-				t.Errorf("got %+v, want %q", z, tc.want)
-			}
-		})
+				if tc.wantNil {
+					if z != nil {
+						t.Errorf("want nil, got %+v", z)
+					}
+					return
+				}
+				if z == nil || z.Name != tc.want {
+					t.Errorf("got %+v, want %q", z, tc.want)
+				}
+			},
+		)
 	}
 }
 
 func TestMatchZone_APIError(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "boom", http.StatusInternalServerError)
+		},
+	)
 	if _, err := plugin.matchZone("example.com"); err == nil {
 		t.Fatal("expected error, got nil")
 	}

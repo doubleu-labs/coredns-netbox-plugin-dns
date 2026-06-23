@@ -53,27 +53,33 @@ func RunTestLookup(t *testing.T, tcs []test.Case, family testFamily) {
 			dns.TypeToString[tc.Qtype],
 			testFamilyToString[family],
 		)
-		t.Run(tcName, func(t *testing.T) {
-			msg := tc.Msg()
-			respWriter := GetTestResponseWriter(family)
-			rec := dnstest.NewRecorder(respWriter)
-			_, err := netboxdnsPlugin.ServeDNS(context.Background(), rec, msg)
-			if err != nil {
-				t.Errorf("expected no error, got %v", err)
-				return
-			}
-			resp := rec.Msg
-			if resp == nil {
-				t.Fatal("got nil response message")
-			}
-			if ok := RunTestLookupCheckCNAME(t, tc, resp); !ok {
-				return
-			}
-			if err := test.SortAndCheck(resp, tc); err != nil {
-				t.Logf("%s\n", rec.Msg)
-				t.Error(err)
-			}
-		})
+		t.Run(
+			tcName, func(t *testing.T) {
+				msg := tc.Msg()
+				respWriter := GetTestResponseWriter(family)
+				rec := dnstest.NewRecorder(respWriter)
+				_, err := netboxdnsPlugin.ServeDNS(
+					context.Background(),
+					rec,
+					msg,
+				)
+				if err != nil {
+					t.Errorf("expected no error, got %v", err)
+					return
+				}
+				resp := rec.Msg
+				if resp == nil {
+					t.Fatal("got nil response message")
+				}
+				if ok := RunTestLookupCheckCNAME(t, tc, resp); !ok {
+					return
+				}
+				if err := test.SortAndCheck(resp, tc); err != nil {
+					t.Logf("%s\n", rec.Msg)
+					t.Error(err)
+				}
+			},
+		)
 	}
 }
 
@@ -156,7 +162,7 @@ func ConfigureTokenAndPlugin(t *testing.T) {
 	netboxdnsPlugin = &NetboxDNS{
 		Next:  test.ErrorHandler(),
 		zones: []string{"."},
-		requestClient: &netbox.APIRequestClient{
+		requestClient: &netbox.Client{
 			Client: client,
 			NetboxURL: &url.URL{
 				Scheme: "http",
@@ -310,7 +316,8 @@ var (
 
 	testLookupReverseZonesCasesv6 []test.Case = []test.Case{
 		{
-			Qname: "1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.", Qtype: dns.TypeSOA,
+			Qname: "1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.",
+			Qtype: dns.TypeSOA,
 			Answer: []dns.RR{
 				test.SOA("1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa. 86400 IN SOA dns01.example.com. admin.example.com. 1 43200 7200 2419200 3600"),
 			},
@@ -321,7 +328,8 @@ var (
 			Extra: exampledotcomNSAddr6,
 		},
 		{
-			Qname: "2.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.", Qtype: dns.TypeSOA,
+			Qname: "2.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.",
+			Qtype: dns.TypeSOA,
 			Answer: []dns.RR{
 				test.SOA("2.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa. 86400 IN SOA dns01.example.com. admin.example.com. 1 43200 7200 2419200 3600"),
 			},
@@ -332,7 +340,8 @@ var (
 			Extra: exampledotcomNSAddr6,
 		},
 		{
-			Qname: "3.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.", Qtype: dns.TypeSOA,
+			Qname: "3.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.",
+			Qtype: dns.TypeSOA,
 			Answer: []dns.RR{
 				test.SOA("3.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa. 86400 IN SOA dns01.example.com. admin.example.com. 1 43200 7200 2419200 3600"),
 			},
@@ -655,55 +664,64 @@ var (
 
 	testLookupPTRV6 []test.Case = []test.Case{
 		{
-			Qname: "0.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.", Qtype: dns.TypePTR,
+			Qname: "0.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.",
+			Qtype: dns.TypePTR,
 			Answer: []dns.RR{
 				test.PTR("0.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa. 3600 IN PTR dns01.example.com."),
 			},
 		},
 		{
-			Qname: "1.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.", Qtype: dns.TypePTR,
+			Qname: "1.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.",
+			Qtype: dns.TypePTR,
 			Answer: []dns.RR{
 				test.PTR("1.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa. 3600 IN PTR dns02.example.com."),
 			},
 		},
 		{
-			Qname: "2.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.", Qtype: dns.TypePTR,
+			Qname: "2.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.",
+			Qtype: dns.TypePTR,
 			Answer: []dns.RR{
 				test.PTR("2.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa. 3600 IN PTR aservice.example.com."),
 			},
 		},
 		{
-			Qname: "3.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.", Qtype: dns.TypePTR,
+			Qname: "3.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.",
+			Qtype: dns.TypePTR,
 			Answer: []dns.RR{
 				test.PTR("3.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa. 3600 IN PTR mail.example.com."),
 			},
 		},
 		{
-			Qname: "5.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.", Qtype: dns.TypePTR,
+			Qname: "5.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.",
+			Qtype: dns.TypePTR,
 			Answer: []dns.RR{
 				test.PTR("5.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa. 3600 IN PTR puppet-server-a.example.com."),
 			},
 		},
 		{
-			Qname: "6.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.", Qtype: dns.TypePTR,
+			Qname: "6.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.",
+			Qtype: dns.TypePTR,
 			Answer: []dns.RR{
 				test.PTR("6.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa. 3600 IN PTR puppet-server-b.example.com."),
 			},
 		},
 		{
-			Qname: "7.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.", Qtype: dns.TypePTR,
+			Qname: "7.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.",
+			Qtype: dns.TypePTR,
 			Answer: []dns.RR{
 				test.PTR("7.1.0.0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa. 3600 IN PTR web.example.com."),
 			},
 		},
 		{
-			Qname: "0.1.0.0.2.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.", Qtype: dns.TypePTR,
+			Qname: "0.1.0.0.2.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.",
+			Qtype: dns.TypePTR,
 			Answer: []dns.RR{
 				test.PTR("0.1.0.0.2.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa. 3600 IN PTR myservice.sub.example.com."),
 			},
 		},
 		{
-			Qname: "0.1.0.0.3.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.", Qtype: dns.TypePTR,
+			Qname: "0.1.0.0.3.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa.",
+			Qtype: dns.TypePTR,
 			Answer: []dns.RR{
 				test.PTR("0.1.0.0.3.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa. 3600 IN PTR myotherservice.subtwo.example.com."),
 			},
@@ -753,7 +771,7 @@ func TestOffline(t *testing.T) {
 	netboxdns := NetboxDNS{
 		Next:  test.ErrorHandler(),
 		zones: []string{"."},
-		requestClient: &netbox.APIRequestClient{
+		requestClient: &netbox.Client{
 			Client: &http.Client{
 				Timeout: defaultHTTPClientTimeout,
 			},
@@ -780,7 +798,7 @@ func TestUnauthorized(t *testing.T) {
 	netboxdns := NetboxDNS{
 		Next:  test.ErrorHandler(),
 		zones: []string{"."},
-		requestClient: &netbox.APIRequestClient{
+		requestClient: &netbox.Client{
 			Client: &http.Client{
 				Timeout: defaultHTTPClientTimeout,
 			},
@@ -808,7 +826,7 @@ func TestFallthrough(t *testing.T) {
 	netboxdns := NetboxDNS{
 		Next:  test.ErrorHandler(),
 		zones: []string{exampledotcomName},
-		requestClient: &netbox.APIRequestClient{
+		requestClient: &netbox.Client{
 			Client: &http.Client{
 				Timeout: defaultHTTPClientTimeout,
 			},
@@ -836,7 +854,7 @@ func TestUnhandledZone(t *testing.T) {
 	netboxdns := NetboxDNS{
 		Next:  test.ErrorHandler(),
 		zones: []string{exampledotcomName},
-		requestClient: &netbox.APIRequestClient{
+		requestClient: &netbox.Client{
 			Client: &http.Client{
 				Timeout: defaultHTTPClientTimeout,
 			},

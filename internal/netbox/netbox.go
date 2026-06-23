@@ -9,7 +9,7 @@ import (
 	"net/url"
 )
 
-type APIRequestClient struct {
+type Client struct {
 	Client    *http.Client
 	NetboxURL *url.URL
 	Token     string
@@ -35,7 +35,7 @@ func closeResponseBody(body io.Closer, err *error, context string) {
 }
 
 func doGet(
-	requestClient *APIRequestClient,
+	requestClient *Client,
 	url string,
 ) (*http.Response, error) {
 	request, err := http.NewRequest("GET", url, nil)
@@ -63,7 +63,7 @@ func responseError(response *http.Response) error {
 }
 
 func get[T any](
-	requestClient *APIRequestClient,
+	requestClient *Client,
 	url string,
 ) (T, error) {
 	var out T
@@ -87,7 +87,7 @@ func get[T any](
 }
 
 func getMany[T any](
-	requestClient *APIRequestClient,
+	requestClient *Client,
 	url string,
 ) ([]T, error) {
 	nextUrl := url

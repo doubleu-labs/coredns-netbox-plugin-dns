@@ -54,7 +54,7 @@ func urlZoneID(netboxurl *url.URL, id int) *url.URL {
 //
 // Name-prefix filtering is done client-side because NetBox-dns has no
 // "zone name starts with" API filter.
-func GetCatalogZones(requestClient *APIRequestClient, viewName string) ([]Zone, error) {
+func GetCatalogZones(requestClient *Client, viewName string) ([]Zone, error) {
 	requestUrl := urlZones(requestClient.NetboxURL)
 	q := requestUrl.Query()
 	q.Set("status", "parked")
@@ -83,7 +83,7 @@ func GetCatalogZones(requestClient *APIRequestClient, viewName string) ([]Zone, 
 // deprecated, and reserved statuses; those represent zones that exist as
 // records-of-record but should not be served as authoritative DNS, so we
 // exclude them from every normal serving path (lookup, AXFR, IXFR poller).
-func GetZones(requestClient *APIRequestClient, viewName string) ([]Zone, error) {
+func GetZones(requestClient *Client, viewName string) ([]Zone, error) {
 	requestUrl := urlZones(requestClient.NetboxURL)
 	q := requestUrl.Query()
 	q.Set("status", "active")

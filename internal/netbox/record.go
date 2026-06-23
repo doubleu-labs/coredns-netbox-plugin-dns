@@ -49,7 +49,7 @@ func urlRecords(netboxurl *url.URL) *url.URL {
 }
 
 func GetRecordsQuery(
-	requestClient *APIRequestClient,
+	requestClient *Client,
 	query *RecordQuery,
 ) ([]Record, error) {
 	requestUrl := urlRecords(requestClient.NetboxURL)
@@ -75,7 +75,7 @@ func GetRecordsQuery(
 }
 
 func resolveRecordTTLs(
-	requestClient *APIRequestClient,
+	requestClient *Client,
 	records []Record,
 ) ([]Record, error) {
 	zoneTTL := make(map[int]uint32)

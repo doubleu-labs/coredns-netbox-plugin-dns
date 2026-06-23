@@ -12,11 +12,14 @@ func TestDoGet_SuccessSetsAuthAndUserAgent(t *testing.T) {
 	_, mux, client := mockNetbox(t)
 
 	var gotAuth, gotUA string
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, r *http.Request) {
-		gotAuth = r.Header.Get("Authorization")
-		gotUA = r.Header.Get("User-Agent")
-		writeJSON(w, fixtureZonesEmpty)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, r *http.Request) {
+			gotAuth = r.Header.Get("Authorization")
+			gotUA = r.Header.Get("User-Agent")
+			writeJSON(w, fixtureZonesEmpty)
+		},
+	)
 
 	resp, err := doGet(client, client.NetboxURL.JoinPath("zones", "/").String())
 	if err != nil {
@@ -28,7 +31,11 @@ func TestDoGet_SuccessSetsAuthAndUserAgent(t *testing.T) {
 		t.Errorf("Authorization header = %q, want %q", gotAuth, want)
 	}
 	if gotUA != "netboxdns-unit-tests" {
-		t.Errorf("User-Agent header = %q, want %q", gotUA, "netboxdns-unit-tests")
+		t.Errorf(
+			"User-Agent header = %q, want %q",
+			gotUA,
+			"netboxdns-unit-tests",
+		)
 	}
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status = %d, want 200", resp.StatusCode)
@@ -38,7 +45,7 @@ func TestDoGet_SuccessSetsAuthAndUserAgent(t *testing.T) {
 func TestDoGet_ConnectionError(t *testing.T) {
 	// Build a client pointing to a closed listener.
 	bogus, _ := url.Parse("http://127.0.0.1:1") // port 1 should refuse
-	client := &APIRequestClient{
+	client := &Client{
 		Client:    http.DefaultClient,
 		NetboxURL: bogus,
 		Token:     "x",
@@ -62,25 +69,36 @@ func TestResponseError(t *testing.T) {
 		{"500 server error", http.StatusInternalServerError, true},
 	}
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			resp := &http.Response{StatusCode: tc.status, Status: fmt.Sprintf("%d", tc.status)}
-			err := responseError(resp)
-			if tc.wantErr && err == nil {
-				t.Errorf("status %d: want error, got nil", tc.status)
-			}
-			if !tc.wantErr && err != nil {
-				t.Errorf("status %d: want nil, got %v", tc.status, err)
-			}
-		})
+		t.Run(
+			tc.name, func(t *testing.T) {
+				resp := &http.Response{
+					StatusCode: tc.status,
+					Status:     fmt.Sprintf("%d", tc.status),
+				}
+				err := responseError(resp)
+				if tc.wantErr && err == nil {
+					t.Errorf("status %d: want error, got nil", tc.status)
+				}
+				if !tc.wantErr && err != nil {
+					t.Errorf("status %d: want nil, got %v", tc.status, err)
+				}
+			},
+		)
 	}
 }
 
 func TestGet_InvalidJSON(t *testing.T) {
 	_, mux, client := mockNetbox(t)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/1/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, `{"id": "not-an-int"}`)
-	})
-	_, err := get[Zone](client, client.NetboxURL.JoinPath("zones", "/", "1", "/").String())
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/1/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, `{"id": "not-an-int"}`)
+		},
+	)
+	_, err := get[Zone](
+		client,
+		client.NetboxURL.JoinPath("zones", "/", "1", "/").String(),
+	)
 	if err == nil || !strings.Contains(err.Error(), "unmarshal") {
 		t.Fatalf("want unmarshal error, got %v", err)
 	}
@@ -88,10 +106,16 @@ func TestGet_InvalidJSON(t *testing.T) {
 
 func TestGet_5xxPropagatesError(t *testing.T) {
 	_, mux, client := mockNetbox(t)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/1/", func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	})
-	_, err := get[Zone](client, client.NetboxURL.JoinPath("zones", "/", "1", "/").String())
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/1/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "boom", http.StatusInternalServerError)
+		},
+	)
+	_, err := get[Zone](
+		client,
+		client.NetboxURL.JoinPath("zones", "/", "1", "/").String(),
+	)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -99,11 +123,17 @@ func TestGet_5xxPropagatesError(t *testing.T) {
 
 func TestGetMany_SinglePage(t *testing.T) {
 	_, mux, client := mockNetbox(t)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, fixtureZonesSinglePage)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, fixtureZonesSinglePage)
+		},
+	)
 
-	zones, err := getMany[Zone](client, client.NetboxURL.JoinPath("zones", "/").String())
+	zones, err := getMany[Zone](
+		client,
+		client.NetboxURL.JoinPath("zones", "/").String(),
+	)
 	if err != nil {
 		t.Fatalf("getMany: %v", err)
 	}
@@ -118,23 +148,27 @@ func TestGetMany_SinglePage(t *testing.T) {
 func TestGetMany_MultiPage(t *testing.T) {
 	srv, mux, client := mockNetbox(t)
 
-	page1 := fmt.Sprintf(`{
+	page1 := fmt.Sprintf(
+		`{
         "count": 3,
         "next": "%s/api/plugins/netbox-dns/zones/?page=2",
         "previous": null,
         "results": [
             {"id": 1, "name": "a.example.com", "default_ttl": 60, "nameservers": []}
         ]
-    }`, srv.URL)
+    }`, srv.URL,
+	)
 
-	page2 := fmt.Sprintf(`{
+	page2 := fmt.Sprintf(
+		`{
         "count": 3,
         "next": "%s/api/plugins/netbox-dns/zones/?page=3",
         "previous": null,
         "results": [
             {"id": 2, "name": "b.example.com", "default_ttl": 60, "nameservers": []}
         ]
-    }`, srv.URL)
+    }`, srv.URL,
+	)
 
 	page3 := `{
         "count": 3,
@@ -145,20 +179,26 @@ func TestGetMany_MultiPage(t *testing.T) {
         ]
     }`
 
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Query().Get("page") {
-		case "":
-			writeJSON(w, page1)
-		case "2":
-			writeJSON(w, page2)
-		case "3":
-			writeJSON(w, page3)
-		default:
-			http.NotFound(w, r)
-		}
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Query().Get("page") {
+			case "":
+				writeJSON(w, page1)
+			case "2":
+				writeJSON(w, page2)
+			case "3":
+				writeJSON(w, page3)
+			default:
+				http.NotFound(w, r)
+			}
+		},
+	)
 
-	zones, err := getMany[Zone](client, client.NetboxURL.JoinPath("zones", "/").String())
+	zones, err := getMany[Zone](
+		client,
+		client.NetboxURL.JoinPath("zones", "/").String(),
+	)
 	if err != nil {
 		t.Fatalf("getMany: %v", err)
 	}
@@ -175,10 +215,16 @@ func TestGetMany_MultiPage(t *testing.T) {
 
 func TestGetMany_EmptyResults(t *testing.T) {
 	_, mux, client := mockNetbox(t)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, fixtureZonesEmpty)
-	})
-	zones, err := getMany[Zone](client, client.NetboxURL.JoinPath("zones", "/").String())
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, fixtureZonesEmpty)
+		},
+	)
+	zones, err := getMany[Zone](
+		client,
+		client.NetboxURL.JoinPath("zones", "/").String(),
+	)
 	if err != nil {
 		t.Fatalf("getMany: %v", err)
 	}
@@ -189,10 +235,16 @@ func TestGetMany_EmptyResults(t *testing.T) {
 
 func TestGetMany_PropagatesHTTPError(t *testing.T) {
 	_, mux, client := mockNetbox(t)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "nope", http.StatusUnauthorized)
-	})
-	_, err := getMany[Zone](client, client.NetboxURL.JoinPath("zones", "/").String())
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "nope", http.StatusUnauthorized)
+		},
+	)
+	_, err := getMany[Zone](
+		client,
+		client.NetboxURL.JoinPath("zones", "/").String(),
+	)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

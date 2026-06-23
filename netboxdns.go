@@ -31,7 +31,7 @@ func init() {
 type NetboxDNS struct {
 	Next plugin.Handler
 
-	requestClient *netbox.APIRequestClient
+	requestClient *netbox.Client
 
 	zones       []string
 	fall        fall.F
@@ -56,7 +56,7 @@ type NetboxDNS struct {
 
 func NewNetboxDNS() *NetboxDNS {
 	return &NetboxDNS{
-		requestClient: &netbox.APIRequestClient{
+		requestClient: &netbox.Client{
 			Client: &http.Client{
 				Timeout: defaultHTTPClientTimeout,
 			},
@@ -113,13 +113,19 @@ func (netboxdns *NetboxDNS) ServeDNS(
 	// secondaries can poll the SOA serial before initiating AXFR.
 	if qtype == dns.TypeSOA || qtype == dns.TypeNS {
 		if resp, err := netboxdns.serveCatalogMeta(qname, qtype); err != nil {
-			requestsTotal.WithLabelValues(respondingZone, rcodeLabel(dns.RcodeServerFailure)).Inc()
+			requestsTotal.WithLabelValues(
+				respondingZone,
+				rcodeLabel(dns.RcodeServerFailure),
+			).Inc()
 			return dns.RcodeServerFailure, err
 		} else if resp != nil {
 			respMsg := &dns.Msg{Answer: resp.Answer, Ns: resp.Ns}
 			respMsg.SetReply(reqMsg)
 			respMsg.Authoritative = true
-			requestsTotal.WithLabelValues(respondingZone, rcodeLabel(dns.RcodeSuccess)).Inc()
+			requestsTotal.WithLabelValues(
+				respondingZone,
+				rcodeLabel(dns.RcodeSuccess),
+			).Inc()
 			respWriter.WriteMsg(respMsg)
 			return dns.RcodeSuccess, nil
 		}
@@ -127,7 +133,10 @@ func (netboxdns *NetboxDNS) ServeDNS(
 
 	response, err := netboxdns.lookup(qname, qtype, family)
 	if err != nil {
-		requestsTotal.WithLabelValues(respondingZone, rcodeLabel(dns.RcodeServerFailure)).Inc()
+		requestsTotal.WithLabelValues(
+			respondingZone,
+			rcodeLabel(dns.RcodeServerFailure),
+		).Inc()
 		return dns.RcodeServerFailure, err
 	}
 	if response.LookupResult == lookupNameError {
@@ -163,7 +172,10 @@ func (netboxdns *NetboxDNS) ServeDNS(
 		respMsg.Authoritative = false
 	}
 
-	requestsTotal.WithLabelValues(respondingZone, rcodeLabel(respMsg.Rcode)).Inc()
+	requestsTotal.WithLabelValues(
+		respondingZone,
+		rcodeLabel(respMsg.Rcode),
+	).Inc()
 	respWriter.WriteMsg(respMsg)
 	return dns.RcodeSuccess, nil
 }
