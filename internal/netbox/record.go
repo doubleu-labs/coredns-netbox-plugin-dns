@@ -20,25 +20,25 @@ type RecordQuery struct {
 	Zone *Zone
 }
 
-func (recordQuery *RecordQuery) Encode() string {
+func (rq *RecordQuery) Encode() string {
 	out := url.Values{}
 
-	if recordQuery.FQDN != "" {
-		out.Set("fqdn", recordQuery.FQDN)
+	if rq.FQDN != "" {
+		out.Set("fqdn", rq.FQDN)
 	}
 
-	if recordQuery.Name != "" {
-		out.Set("name", recordQuery.Name)
+	if rq.Name != "" {
+		out.Set("name", rq.Name)
 	}
 
-	if len(recordQuery.Type) != 0 {
-		for _, t := range recordQuery.Type {
+	if len(rq.Type) != 0 {
+		for _, t := range rq.Type {
 			out.Add("type", t)
 		}
 	}
 
-	if recordQuery.Zone != nil {
-		out.Set("zone_id", strconv.Itoa(recordQuery.Zone.ID))
+	if rq.Zone != nil {
+		out.Set("zone_id", strconv.Itoa(rq.Zone.ID))
 	}
 
 	return out.Encode()
