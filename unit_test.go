@@ -24,16 +24,17 @@ func newMockPlugin(t *testing.T) (*http.ServeMux, *NetboxDNS) {
 	if err != nil {
 		t.Fatalf("parse mock url: %v", err)
 	}
-	return mux, &NetboxDNS{
+	plugin := &NetboxDNS{
 		zones: []string{"."},
 		requestClient: &netbox.Client{
 			Client:    srv.Client(),
 			NetboxURL: base,
-			Token:     "test-token",
 			UserAgent: "netboxdns-unit-tests",
 		},
 		catalogTracker: newCatalogTracker(),
 	}
+	plugin.requestClient.SetToken("test-token")
+	return mux, plugin
 }
 
 func writeJSON(w http.ResponseWriter, body string) {

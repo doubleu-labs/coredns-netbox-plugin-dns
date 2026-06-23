@@ -18,11 +18,11 @@ var tokenFuncs tokenFuncMap
 
 func init() {
 	tokenFuncs = tokenFuncMap{
-		"fallthrough": parseFallthrough,
-		"timeout":     parseTimeout,
-		"tls":         parseTLS,
-		"token":       parseToken,
-		"url":         parseUrl,
+		"fallthrough":   parseFallthrough,
+		"timeout":       parseTimeout,
+		"tls":           parseTLS,
+		"token":         parseToken,
+		"url":           parseUrl,
 		"view":          parseView,
 		"view_exclude":  parseViewExclude,
 		"poll_interval": parsePollInterval,
@@ -73,7 +73,10 @@ func parseZones(controller *caddy.Controller, netboxdns *NetboxDNS) {
 	}
 }
 
-func parseConfigTokens(controller *caddy.Controller, netboxdns *NetboxDNS) error {
+func parseConfigTokens(
+	controller *caddy.Controller,
+	netboxdns *NetboxDNS,
+) error {
 	for controller.NextBlock() {
 		tokenName := controller.Val()
 		tokenFunc, ok := tokenFuncs[tokenName]
@@ -146,7 +149,7 @@ func parseToken(controller *caddy.Controller, netboxdns *NetboxDNS) error {
 	if !controller.NextArg() {
 		return controller.Err(`no value for "token" provided`)
 	}
-	netboxdns.requestClient.Token = controller.Val()
+	netboxdns.requestClient.SetToken(controller.Val())
 	return nil
 }
 
@@ -180,7 +183,10 @@ func parseView(controller *caddy.Controller, netboxdns *NetboxDNS) error {
 	return nil
 }
 
-func parseViewExclude(controller *caddy.Controller, netboxdns *NetboxDNS) error {
+func parseViewExclude(
+	controller *caddy.Controller,
+	netboxdns *NetboxDNS,
+) error {
 	args := controller.RemainingArgs()
 	if len(args) == 0 {
 		return controller.Err(`no value for "view_exclude" provided`)
@@ -192,7 +198,10 @@ func parseViewExclude(controller *caddy.Controller, netboxdns *NetboxDNS) error 
 	return nil
 }
 
-func parsePollInterval(controller *caddy.Controller, netboxdns *NetboxDNS) error {
+func parsePollInterval(
+	controller *caddy.Controller,
+	netboxdns *NetboxDNS,
+) error {
 	if !controller.NextArg() {
 		return controller.Err(`no value for "poll_interval" provided`)
 	}
@@ -207,7 +216,10 @@ func parsePollInterval(controller *caddy.Controller, netboxdns *NetboxDNS) error
 	return nil
 }
 
-func parseIXFRHistory(controller *caddy.Controller, netboxdns *NetboxDNS) error {
+func parseIXFRHistory(
+	controller *caddy.Controller,
+	netboxdns *NetboxDNS,
+) error {
 	if !controller.NextArg() {
 		return controller.Err(`no value for "ixfr_history" provided`)
 	}
@@ -223,15 +235,15 @@ func parseIXFRHistory(controller *caddy.Controller, netboxdns *NetboxDNS) error 
 }
 
 func parseValidate(controller *caddy.Controller, netboxdns *NetboxDNS) error {
-	tokenEmpty := netboxdns.requestClient.Token == ""
+	hasToken := netboxdns.requestClient.HasToken()
 	urlEmpty := netboxdns.requestClient.NetboxURL == nil ||
 		netboxdns.requestClient.NetboxURL.Host == ""
-	if tokenEmpty && urlEmpty {
+	if !hasToken && urlEmpty {
 		return controller.Err(
 			`values are required for "token" and "url"`,
 		)
 	}
-	if tokenEmpty {
+	if !hasToken {
 		return controller.Err(`value is required for "token"`)
 	}
 	if urlEmpty {

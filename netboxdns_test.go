@@ -169,9 +169,9 @@ func ConfigureTokenAndPlugin(t *testing.T) {
 				Host:   testInstanceUrlHost,
 				Path:   testInstanceUrlPath,
 			},
-			Token: testInstanceToken,
 		},
 	}
+	netboxdnsPlugin.requestClient.SetToken(testInstanceToken)
 }
 
 var (
@@ -780,9 +780,9 @@ func TestOffline(t *testing.T) {
 				Host:   "localhost:9876",
 				Path:   testInstanceUrlPath,
 			},
-			Token: testInstanceToken,
 		},
 	}
+	netboxdns.requestClient.SetToken(testInstanceToken)
 	tc := test.Case{
 		Qname: exampledotcomName, Qtype: dns.TypeA,
 	}
@@ -807,9 +807,9 @@ func TestUnauthorized(t *testing.T) {
 				Host:   testInstanceUrlHost,
 				Path:   testInstanceUrlPath,
 			},
-			Token: "noop",
 		},
 	}
+	netboxdns.requestClient.SetToken("noop")
 	tc := test.Case{
 		Qname: exampledotcomName, Qtype: dns.TypeA,
 	}
@@ -835,9 +835,9 @@ func TestFallthrough(t *testing.T) {
 				Host:   testInstanceUrlHost,
 				Path:   testInstanceUrlPath,
 			},
-			Token: testInstanceToken,
 		},
 	}
+	netboxdns.requestClient.SetToken(testInstanceToken)
 	netboxdns.fall.SetZonesFromArgs([]string{"out.example.com"})
 	tc := test.Case{
 		Qname: "a.out.example.com.", Qtype: dns.TypeA,
@@ -863,9 +863,9 @@ func TestUnhandledZone(t *testing.T) {
 				Host:   testInstanceUrlHost,
 				Path:   testInstanceUrlPath,
 			},
-			Token: testInstanceToken,
 		},
 	}
+	netboxdns.requestClient.SetToken(testInstanceToken)
 	tc := test.Case{
 		Qname: "www.example.net.", Qtype: dns.TypeA,
 	}
