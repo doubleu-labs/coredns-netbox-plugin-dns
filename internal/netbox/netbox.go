@@ -77,14 +77,14 @@ func get[T any](
 }
 
 func getMany[T any](
-	requestClient *Client,
+	client *Client,
 	url string,
 ) ([]T, error) {
 	nextUrl := url
 	var out []T
 
 	for nextUrl != "" {
-		resp, err := get[ManyResponse[T]](requestClient, nextUrl)
+		resp, err := get[ManyResponse[T]](client, nextUrl)
 		if err != nil {
 			return nil, err
 		}
