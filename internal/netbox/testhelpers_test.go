@@ -26,9 +26,9 @@ func mockNetbox(t *testing.T) (*httptest.Server, *http.ServeMux, *Client) {
 	client := &Client{
 		Client:    srv.Client(),
 		NetboxURL: base,
-		Token:     "test-token",
 		UserAgent: "netboxdns-unit-tests",
 	}
+	client.SetToken("test-token")
 	return srv, mux, client
 }
 
