@@ -10,7 +10,7 @@ import (
 )
 
 type Client struct {
-	Client    *http.Client
+	*http.Client
 	NetboxURL *url.URL
 	Token     string
 	UserAgent string
