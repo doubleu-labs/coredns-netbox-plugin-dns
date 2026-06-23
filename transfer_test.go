@@ -55,7 +55,7 @@ func TestBuildSOA(t *testing.T) {
 	z := &netbox.Zone{
 		Name:       "example.com",
 		SOATTL:     86400,
-		SOAMName:   netbox.SOAMName{Name: "ns1.example.com"},
+		SOAMName:   netbox.Nameserver{Name: "ns1.example.com"},
 		SOARName:   "admin.example.com",
 		SOASerial:  2026040801,
 		SOARefresh: 43200,
@@ -89,9 +89,13 @@ func TestBuildSOA(t *testing.T) {
 
 func TestTransfer_NotAuthoritative(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
-	mux.Handle("/api/plugins/netbox-dns/zones/", zonesHandler(`{
+	mux.Handle(
+		"/api/plugins/netbox-dns/zones/", zonesHandler(
+			`{
         "count": 0, "next": null, "previous": null, "results": []
-    }`))
+    }`,
+		),
+	)
 
 	ch, err := plugin.Transfer("nope.example.com.", 0)
 	if !errors.Is(err, transfer.ErrNotAuthoritative) {
@@ -106,9 +110,12 @@ func TestTransfer_NotAuthoritative(t *testing.T) {
 // turns these into SERVFAIL).
 func TestTransfer_GetZonesError(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "boom", http.StatusInternalServerError)
+		},
+	)
 
 	_, err := plugin.Transfer("example.com.", 0)
 	if err == nil {
@@ -124,20 +131,25 @@ func TestTransfer_GetZonesError(t *testing.T) {
 func TestTransfer_AXFR_FullZone(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
 	mux.Handle("/api/plugins/netbox-dns/zones/", zonesHandler(fixtureZoneFull))
-	mux.HandleFunc("/api/plugins/netbox-dns/records/", func(w http.ResponseWriter, r *http.Request) {
-		// Sanity-check the call: filter is by zone_id of our fixture zone.
-		if got := r.URL.Query().Get("zone_id"); got != "1" {
-			t.Errorf("zone_id query = %q, want 1", got)
-		}
-		writeJSON(w, `{
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/records/",
+		func(w http.ResponseWriter, r *http.Request) {
+			// Sanity-check the call: filter is by zone_id of our fixture zone.
+			if got := r.URL.Query().Get("zone_id"); got != "1" {
+				t.Errorf("zone_id query = %q, want 1", got)
+			}
+			writeJSON(
+				w, `{
             "count": 4, "next": null, "previous": null, "results": [
                 {"type": "NS",   "fqdn": "example.com.",        "absolute_value": "ns1.example.com.", "ttl": 3600, "zone": {"id": 1, "default_ttl": 3600}},
                 {"type": "NS",   "fqdn": "example.com.",        "absolute_value": "ns2.example.com.", "ttl": 3600, "zone": {"id": 1, "default_ttl": 3600}},
                 {"type": "A",    "fqdn": "ns1.example.com.",    "absolute_value": "10.0.0.10",        "ttl": null, "zone": {"id": 1, "default_ttl": 3600}},
                 {"type": "AAAA", "fqdn": "ns1.example.com.",    "absolute_value": "2001:db8::10",     "ttl": null, "zone": {"id": 1, "default_ttl": 3600}}
             ]
-        }`)
-	})
+        }`,
+			)
+		},
+	)
 
 	ch, err := plugin.Transfer("example.com.", 0)
 	if err != nil {
@@ -146,7 +158,10 @@ func TestTransfer_AXFR_FullZone(t *testing.T) {
 	rrs, batches := drainTransfer(t, ch)
 
 	if batches < 2 {
-		t.Errorf("batches = %d, want at least 2 (opening + closing SOA)", batches)
+		t.Errorf(
+			"batches = %d, want at least 2 (opening + closing SOA)",
+			batches,
+		)
 	}
 	if len(rrs) < 2 {
 		t.Fatalf("len = %d, want at least SOA+SOA", len(rrs))
@@ -179,7 +194,12 @@ func TestTransfer_AXFR_FullZone(t *testing.T) {
 		}
 	}
 	if !sawNS || !sawA || !sawAAAA {
-		t.Errorf("missing record types: NS=%v A=%v AAAA=%v", sawNS, sawA, sawAAAA)
+		t.Errorf(
+			"missing record types: NS=%v A=%v AAAA=%v",
+			sawNS,
+			sawA,
+			sawAAAA,
+		)
 	}
 }
 
@@ -189,14 +209,19 @@ func TestTransfer_AXFR_FullZone(t *testing.T) {
 func TestTransfer_AXFR_DropsNetboxSOA(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
 	mux.Handle("/api/plugins/netbox-dns/zones/", zonesHandler(fixtureZoneFull))
-	mux.HandleFunc("/api/plugins/netbox-dns/records/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, `{
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/records/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(
+				w, `{
             "count": 2, "next": null, "previous": null, "results": [
                 {"type": "SOA", "fqdn": "example.com.", "absolute_value": "ns1.example.com. admin.example.com. 1 43200 7200 2419200 3600", "ttl": 86400, "zone": {"id": 1, "default_ttl": 3600}},
                 {"type": "A",   "fqdn": "host.example.com.", "absolute_value": "10.0.0.20", "ttl": null, "zone": {"id": 1, "default_ttl": 3600}}
             ]
-        }`)
-	})
+        }`,
+			)
+		},
+	)
 
 	ch, err := plugin.Transfer("example.com.", 0)
 	if err != nil {
@@ -207,7 +232,11 @@ func TestTransfer_AXFR_DropsNetboxSOA(t *testing.T) {
 	// We expect: SOA(synth) + A + SOA(synth). Exactly one SOA from netbox
 	// must have been dropped, leaving the body with just the A record.
 	if len(rrs) != 3 {
-		t.Fatalf("len = %d, want 3 (synth-SOA, A, synth-SOA); got %v", len(rrs), rrs)
+		t.Fatalf(
+			"len = %d, want 3 (synth-SOA, A, synth-SOA); got %v",
+			len(rrs),
+			rrs,
+		)
 	}
 	if _, ok := rrs[1].(*dns.A); !ok {
 		t.Errorf("body[0] = %T, want *dns.A", rrs[1])
@@ -220,7 +249,11 @@ func TestTransfer_AXFR_DropsNetboxSOA(t *testing.T) {
 			continue
 		}
 		if soa.Serial != 2026040801 {
-			t.Errorf("idx %d: serial = %d, want synth value 2026040801", i, soa.Serial)
+			t.Errorf(
+				"idx %d: serial = %d, want synth value 2026040801",
+				i,
+				soa.Serial,
+			)
 		}
 	}
 }
@@ -230,10 +263,19 @@ func TestTransfer_AXFR_DropsNetboxSOA(t *testing.T) {
 func TestTransfer_IXFR_NoOp_SerialEqual(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
 	mux.Handle("/api/plugins/netbox-dns/zones/", zonesHandler(fixtureZoneFull))
-	mux.HandleFunc("/api/plugins/netbox-dns/records/", func(w http.ResponseWriter, r *http.Request) {
-		t.Errorf("records endpoint should NOT be called during IXFR no-op; got %s", r.URL)
-		writeJSON(w, `{"count": 0, "next": null, "previous": null, "results": []}`)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/records/",
+		func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf(
+				"records endpoint should NOT be called during IXFR no-op; got %s",
+				r.URL,
+			)
+			writeJSON(
+				w,
+				`{"count": 0, "next": null, "previous": null, "results": []}`,
+			)
+		},
+	)
 
 	ch, err := plugin.Transfer("example.com.", 2026040801) // == current serial
 	if err != nil {
@@ -251,9 +293,12 @@ func TestTransfer_IXFR_NoOp_SerialEqual(t *testing.T) {
 func TestTransfer_IXFR_NoOp_SerialNewer(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
 	mux.Handle("/api/plugins/netbox-dns/zones/", zonesHandler(fixtureZoneFull))
-	mux.HandleFunc("/api/plugins/netbox-dns/records/", func(w http.ResponseWriter, r *http.Request) {
-		t.Errorf("records endpoint should NOT be called; got %s", r.URL)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/records/",
+		func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("records endpoint should NOT be called; got %s", r.URL)
+		},
+	)
 
 	ch, err := plugin.Transfer("example.com.", 2026040802) // > current
 	if err != nil {
@@ -270,15 +315,23 @@ func TestTransfer_IXFR_NoOp_SerialNewer(t *testing.T) {
 func TestTransfer_IXFR_OlderSerialFallsBackToAXFR(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
 	mux.Handle("/api/plugins/netbox-dns/zones/", zonesHandler(fixtureZoneFull))
-	mux.HandleFunc("/api/plugins/netbox-dns/records/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, `{
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/records/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(
+				w, `{
             "count": 1, "next": null, "previous": null, "results": [
                 {"type": "A", "fqdn": "host.example.com.", "absolute_value": "10.0.0.30", "ttl": null, "zone": {"id": 1, "default_ttl": 3600}}
             ]
-        }`)
-	})
+        }`,
+			)
+		},
+	)
 
-	ch, err := plugin.Transfer("example.com.", 2026040800) // < current (2026040801)
+	ch, err := plugin.Transfer(
+		"example.com.",
+		2026040800,
+	) // < current (2026040801)
 	if err != nil {
 		t.Fatalf("Transfer: %v", err)
 	}
@@ -307,20 +360,31 @@ func TestTransfer_AXFR_BatchesLargeZone(t *testing.T) {
 	// Build a fixture with 250 A records → expect at least ceil(250/100)=3
 	// body batches plus opening + closing SOA = 5 batches.
 	const recordCount = 250
-	mux.HandleFunc("/api/plugins/netbox-dns/records/", func(w http.ResponseWriter, _ *http.Request) {
-		var b strings.Builder
-		fmt.Fprintf(&b, `{"count": %d, "next": null, "previous": null, "results": [`, recordCount)
-		for i := 0; i < recordCount; i++ {
-			if i > 0 {
-				b.WriteString(",")
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/records/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			var b strings.Builder
+			fmt.Fprintf(
+				&b,
+				`{"count": %d, "next": null, "previous": null, "results": [`,
+				recordCount,
+			)
+			for i := 0; i < recordCount; i++ {
+				if i > 0 {
+					b.WriteString(",")
+				}
+				fmt.Fprintf(
+					&b,
+					`{"type":"A","fqdn":"h%d.example.com.","absolute_value":"10.1.%d.%d","ttl":null,"zone":{"id":1,"default_ttl":3600}}`,
+					i,
+					i/256,
+					i%256,
+				)
 			}
-			fmt.Fprintf(&b,
-				`{"type":"A","fqdn":"h%d.example.com.","absolute_value":"10.1.%d.%d","ttl":null,"zone":{"id":1,"default_ttl":3600}}`,
-				i, i/256, i%256)
-		}
-		b.WriteString("]}")
-		writeJSON(w, b.String())
-	})
+			b.WriteString("]}")
+			writeJSON(w, b.String())
+		},
+	)
 
 	ch, err := plugin.Transfer("example.com.", 0)
 	if err != nil {
@@ -348,9 +412,15 @@ func TestTransfer_AXFR_BatchesLargeZone(t *testing.T) {
 func TestTransfer_CaseInsensitiveMatch(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
 	mux.Handle("/api/plugins/netbox-dns/zones/", zonesHandler(fixtureZoneFull))
-	mux.HandleFunc("/api/plugins/netbox-dns/records/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, `{"count": 0, "next": null, "previous": null, "results": []}`)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/records/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(
+				w,
+				`{"count": 0, "next": null, "previous": null, "results": []}`,
+			)
+		},
+	)
 
 	ch, err := plugin.Transfer("EXAMPLE.COM.", 0)
 	if err != nil {
@@ -369,13 +439,22 @@ func TestTransfer_HonoursViewName(t *testing.T) {
 	plugin.viewName = "internal"
 
 	var gotView string
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, r *http.Request) {
-		gotView = r.URL.Query().Get("view")
-		writeJSON(w, fixtureZoneFull)
-	})
-	mux.HandleFunc("/api/plugins/netbox-dns/records/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, `{"count": 0, "next": null, "previous": null, "results": []}`)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, r *http.Request) {
+			gotView = r.URL.Query().Get("view")
+			writeJSON(w, fixtureZoneFull)
+		},
+	)
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/records/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(
+				w,
+				`{"count": 0, "next": null, "previous": null, "results": []}`,
+			)
+		},
+	)
 
 	ch, err := plugin.Transfer("example.com.", 0)
 	if err != nil {

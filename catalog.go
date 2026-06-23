@@ -42,7 +42,10 @@ func newCatalogTracker() *catalogTracker {
 // idempotent on equal serials). Otherwise the counter advances by one
 // — or is initialised to time.Now().Unix() the very first time we see
 // this catalog name.
-func (ct *catalogTracker) NextSerial(catalog string, members []netbox.Zone) uint32 {
+func (ct *catalogTracker) NextSerial(
+	catalog string,
+	members []netbox.Zone,
+) uint32 {
 	print := membershipFingerprint(members)
 	ct.mu.Lock()
 	defer ct.mu.Unlock()
@@ -83,7 +86,10 @@ func strconvI(n int) string { return fmt.Sprintf("%d", n) }
 // code path (which uses GetZones → status=active) would never find them.
 // Returns (nil, nil) when qname does not match any catalog zone, so the
 // caller falls through to the regular lookup path.
-func (n *NetboxDNS) serveCatalogMeta(qname string, qtype uint16) (*lookupResponse, error) {
+func (n *NetboxDNS) serveCatalogMeta(
+	qname string,
+	qtype uint16,
+) (*lookupResponse, error) {
 	nameTrimmed := strings.TrimSuffix(qname, ".")
 	catalogs, err := n.getCatalogZones()
 	if err != nil {
@@ -114,16 +120,18 @@ func (n *NetboxDNS) serveCatalogMeta(qname string, qtype uint16) (*lookupRespons
 	soa := buildSOAWithSerial(catalog, fqdn, serial)
 
 	var ns []dns.RR
-	for _, nsEntry := range catalog.NameServers {
-		ns = append(ns, &dns.NS{
-			Hdr: dns.RR_Header{
-				Name:   fqdn,
-				Rrtype: dns.TypeNS,
-				Class:  dns.ClassINET,
-				Ttl:    catalog.SOATTL,
+	for _, nsEntry := range catalog.Nameservers {
+		ns = append(
+			ns, &dns.NS{
+				Hdr: dns.RR_Header{
+					Name:   fqdn,
+					Rrtype: dns.TypeNS,
+					Class:  dns.ClassINET,
+					Ttl:    catalog.SOATTL,
+				},
+				Ns: dns.Fqdn(nsEntry.Name),
 			},
-			Ns: dns.Fqdn(nsEntry.Name),
-		})
+		)
 	}
 
 	switch qtype {
@@ -165,28 +173,32 @@ func buildCatalog(catalog *netbox.Zone, memberZones []netbox.Zone) []dns.RR {
 	out := make([]dns.RR, 0, 2+len(memberZones))
 
 	// Apex NS records (one per nameserver configured on the catalog zone).
-	for _, ns := range catalog.NameServers {
-		out = append(out, &dns.NS{
-			Hdr: dns.RR_Header{
-				Name:   cName,
-				Rrtype: dns.TypeNS,
-				Class:  dns.ClassINET,
-				Ttl:    catalog.SOATTL,
+	for _, ns := range catalog.Nameservers {
+		out = append(
+			out, &dns.NS{
+				Hdr: dns.RR_Header{
+					Name:   cName,
+					Rrtype: dns.TypeNS,
+					Class:  dns.ClassINET,
+					Ttl:    catalog.SOATTL,
+				},
+				Ns: dns.Fqdn(ns.Name),
 			},
-			Ns: dns.Fqdn(ns.Name),
-		})
+		)
 	}
 
 	// Mandatory version marker.
-	out = append(out, &dns.TXT{
-		Hdr: dns.RR_Header{
-			Name:   "version." + cName,
-			Rrtype: dns.TypeTXT,
-			Class:  dns.ClassINET,
-			Ttl:    catalog.SOATTL,
+	out = append(
+		out, &dns.TXT{
+			Hdr: dns.RR_Header{
+				Name:   "version." + cName,
+				Rrtype: dns.TypeTXT,
+				Class:  dns.ClassINET,
+				Ttl:    catalog.SOATTL,
+			},
+			Txt: []string{catalogVersion},
 		},
-		Txt: []string{catalogVersion},
-	})
+	)
 
 	// One PTR per member zone. The unique-id label must be stable across
 	// poll cycles so secondaries can identify zones across snapshots; we
@@ -198,15 +210,17 @@ func buildCatalog(catalog *netbox.Zone, memberZones []netbox.Zone) []dns.RR {
 			continue
 		}
 		owner := fmt.Sprintf("id-%d.zones.%s", m.ID, cName)
-		out = append(out, &dns.PTR{
-			Hdr: dns.RR_Header{
-				Name:   owner,
-				Rrtype: dns.TypePTR,
-				Class:  dns.ClassINET,
-				Ttl:    catalog.SOATTL,
+		out = append(
+			out, &dns.PTR{
+				Hdr: dns.RR_Header{
+					Name:   owner,
+					Rrtype: dns.TypePTR,
+					Class:  dns.ClassINET,
+					Ttl:    catalog.SOATTL,
+				},
+				Ptr: dns.Fqdn(m.Name),
 			},
-			Ptr: dns.Fqdn(m.Name),
-		})
+		)
 	}
 
 	return out

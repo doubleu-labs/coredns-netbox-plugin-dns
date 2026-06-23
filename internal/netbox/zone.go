@@ -6,27 +6,30 @@ import (
 	"strings"
 )
 
+// Zone represents a DNS zone provided by the Netbox API. Only the fields the
+// plugin actually consumes are decoded.
 type Zone struct {
-	DefaultTTL  uint32     `json:"default_ttl"`
-	ID          int        `json:"id"`
-	Name        string     `json:"name"`
-	Status      string     `json:"status"`
-	NameServers []SOAMName `json:"nameservers"`
-	View        *View      `json:"view"`
+	DefaultTTL  uint32       `json:"default_ttl"`
+	ID          int          `json:"id"`
+	Name        string       `json:"name"`
+	Status      string       `json:"status"`
+	Nameservers []Nameserver `json:"nameservers"`
+	View        *View        `json:"view"`
 
 	// SOA fields populated by netbox-dns. soa_mname is a nested nameserver
 	// object (same shape as entries in NameServers).
-	SOATTL     uint32   `json:"soa_ttl"`
-	SOAMName   SOAMName `json:"soa_mname"`
-	SOARName   string   `json:"soa_rname"`
-	SOASerial  uint32   `json:"soa_serial"`
-	SOARefresh uint32   `json:"soa_refresh"`
-	SOARetry   uint32   `json:"soa_retry"`
-	SOAExpire  uint32   `json:"soa_expire"`
-	SOAMinimum uint32   `json:"soa_minimum"`
+	SOATTL     uint32     `json:"soa_ttl"`
+	SOAMName   Nameserver `json:"soa_mname"`
+	SOARName   string     `json:"soa_rname"`
+	SOASerial  uint32     `json:"soa_serial"`
+	SOARefresh uint32     `json:"soa_refresh"`
+	SOARetry   uint32     `json:"soa_retry"`
+	SOAExpire  uint32     `json:"soa_expire"`
+	SOAMinimum uint32     `json:"soa_minimum"`
 }
 
-type SOAMName struct {
+// Nameserver represents a nameserver provided by the Netbox API.
+type Nameserver struct {
 	Name string `json:"name"`
 }
 

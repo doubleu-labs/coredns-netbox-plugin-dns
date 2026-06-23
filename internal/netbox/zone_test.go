@@ -26,9 +26,12 @@ func TestUrlZoneID(t *testing.T) {
 
 func TestGetZones_Success(t *testing.T) {
 	_, mux, client := mockNetbox(t)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, fixtureZonesSinglePage)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, fixtureZonesSinglePage)
+		},
+	)
 
 	zones, err := GetZones(client, "")
 	if err != nil {
@@ -40,16 +43,19 @@ func TestGetZones_Success(t *testing.T) {
 	if zones[0].DefaultTTL != 3600 || zones[1].DefaultTTL != 7200 {
 		t.Errorf("default TTLs not parsed: %+v", zones)
 	}
-	if len(zones[0].NameServers) != 2 || zones[0].NameServers[0].Name != "ns1.example.com" {
-		t.Errorf("nameservers not parsed: %+v", zones[0].NameServers)
+	if len(zones[0].Nameservers) != 2 || zones[0].Nameservers[0].Name != "ns1.example.com" {
+		t.Errorf("nameservers not parsed: %+v", zones[0].Nameservers)
 	}
 }
 
 func TestGetZones_Empty(t *testing.T) {
 	_, mux, client := mockNetbox(t)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, fixtureZonesEmpty)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, fixtureZonesEmpty)
+		},
+	)
 	zones, err := GetZones(client, "")
 	if err != nil {
 		t.Fatalf("GetZones: %v", err)
@@ -62,10 +68,13 @@ func TestGetZones_Empty(t *testing.T) {
 func TestGetZones_WithView_AppendsQueryParam(t *testing.T) {
 	_, mux, client := mockNetbox(t)
 	var gotView string
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, r *http.Request) {
-		gotView = r.URL.Query().Get("view")
-		writeJSON(w, fixtureZonesEmpty)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, r *http.Request) {
+			gotView = r.URL.Query().Get("view")
+			writeJSON(w, fixtureZonesEmpty)
+		},
+	)
 
 	if _, err := GetZones(client, "internal"); err != nil {
 		t.Fatalf("GetZones: %v", err)
@@ -80,11 +89,14 @@ func TestGetZones_WithView_AppendsQueryParam(t *testing.T) {
 func TestGetZones_AlwaysFiltersStatusActive(t *testing.T) {
 	_, mux, client := mockNetbox(t)
 	var gotStatus, gotView string
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, r *http.Request) {
-		gotStatus = r.URL.Query().Get("status")
-		gotView = r.URL.Query().Get("view")
-		writeJSON(w, fixtureZonesEmpty)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, r *http.Request) {
+			gotStatus = r.URL.Query().Get("status")
+			gotView = r.URL.Query().Get("view")
+			writeJSON(w, fixtureZonesEmpty)
+		},
+	)
 
 	if _, err := GetZones(client, ""); err != nil {
 		t.Fatalf("GetZones: %v", err)
@@ -93,14 +105,20 @@ func TestGetZones_AlwaysFiltersStatusActive(t *testing.T) {
 		t.Errorf("?status = %q, want %q", gotStatus, "active")
 	}
 	if gotView != "" {
-		t.Errorf("?view should be empty when no view configured, got %q", gotView)
+		t.Errorf(
+			"?view should be empty when no view configured, got %q",
+			gotView,
+		)
 	}
 }
 
 func TestGetZones_ParsesNestedView(t *testing.T) {
 	_, mux, client := mockNetbox(t)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, `{
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(
+				w, `{
             "count": 1, "next": null, "previous": null,
             "results": [
                 {
@@ -109,8 +127,10 @@ func TestGetZones_ParsesNestedView(t *testing.T) {
                     "view": {"id": 2, "name": "internal"}
                 }
             ]
-        }`)
-	})
+        }`,
+			)
+		},
+	)
 
 	zones, err := GetZones(client, "internal")
 	if err != nil {
@@ -126,9 +146,12 @@ func TestGetZones_ParsesNestedView(t *testing.T) {
 
 func TestGetZones_APIError(t *testing.T) {
 	_, mux, client := mockNetbox(t)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "boom", http.StatusInternalServerError)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "boom", http.StatusInternalServerError)
+		},
+	)
 	if _, err := GetZones(client, ""); err == nil {
 		t.Fatal("expected error, got nil")
 	}

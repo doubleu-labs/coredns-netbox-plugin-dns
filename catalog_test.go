@@ -70,11 +70,14 @@ func catalogZonesHandler(active, parked string) http.HandlerFunc {
 
 func TestBuildCatalog_Structure(t *testing.T) {
 	catalog := &netbox.Zone{
-		ID:          99,
-		Name:        "cat.example.com",
-		Status:      "parked",
-		SOATTL:      3600,
-		NameServers: []netbox.SOAMName{{Name: "ns1.example.com"}, {Name: "ns2.example.com"}},
+		ID:     99,
+		Name:   "cat.example.com",
+		Status: "parked",
+		SOATTL: 3600,
+		Nameservers: []netbox.Nameserver{
+			{Name: "ns1.example.com"},
+			{Name: "ns2.example.com"},
+		},
 	}
 	members := []netbox.Zone{
 		{ID: 3, Name: "example.com", Status: "active"},
@@ -128,7 +131,12 @@ func TestBuildCatalog_Structure(t *testing.T) {
 }
 
 func TestBuildCatalog_ExcludesItself(t *testing.T) {
-	catalog := &netbox.Zone{ID: 99, Name: "cat.example.com", Status: "parked", SOATTL: 3600}
+	catalog := &netbox.Zone{
+		ID:     99,
+		Name:   "cat.example.com",
+		Status: "parked",
+		SOATTL: 3600,
+	}
 	// Defensive: even if the active list bizarrely contains the catalog
 	// itself, buildCatalog must skip it (no self-reference PTR).
 	members := []netbox.Zone{
@@ -153,7 +161,11 @@ func TestCatalogTracker_BumpsOnMembershipChange(t *testing.T) {
 	s1 := tr.NextSerial("cat.example.com", m1)
 	s1again := tr.NextSerial("cat.example.com", m1)
 	if s1 != s1again {
-		t.Errorf("serial must be stable for unchanged membership: %d vs %d", s1, s1again)
+		t.Errorf(
+			"serial must be stable for unchanged membership: %d vs %d",
+			s1,
+			s1again,
+		)
 	}
 	s2 := tr.NextSerial("cat.example.com", m2)
 	if s2 != s1+1 {
@@ -171,7 +183,10 @@ func TestCatalogTracker_PerCatalogIndependent(t *testing.T) {
 	if got := tr.NextSerial("cat.b", []netbox.Zone{{ID: 1}}); got != b {
 		t.Errorf("cat.b serial moved unexpectedly: %d vs %d", got, b)
 	}
-	if got := tr.NextSerial("cat.a", []netbox.Zone{{ID: 1}, {ID: 2}}); got != a+1 {
+	if got := tr.NextSerial(
+		"cat.a",
+		[]netbox.Zone{{ID: 1}, {ID: 2}},
+	); got != a+1 {
 		t.Errorf("cat.a final serial = %d, want %d", got, a+1)
 	}
 }
@@ -182,9 +197,11 @@ func TestTransferCatalog_ColdStartAXFR(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
 	plugin.cache = zonecache.New(8) // enabled but empty
 
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", catalogZonesHandler(
-		fixtureActiveZonesForCatalog, fixtureCatalogZone,
-	))
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/", catalogZonesHandler(
+			fixtureActiveZonesForCatalog, fixtureCatalogZone,
+		),
+	)
 
 	ch, err := plugin.Transfer("cat.example.com.", 0)
 	if err != nil {
@@ -216,9 +233,11 @@ func TestTransferCatalog_IXFRNoOp(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
 	plugin.cache = zonecache.New(8)
 
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", catalogZonesHandler(
-		fixtureActiveZonesForCatalog, fixtureCatalogZone,
-	))
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/", catalogZonesHandler(
+			fixtureActiveZonesForCatalog, fixtureCatalogZone,
+		),
+	)
 
 	// Cold-start AXFR populates the cache so we know the current serial.
 	ch, err := plugin.Transfer("cat.example.com.", 0)
@@ -235,7 +254,11 @@ func TestTransferCatalog_IXFRNoOp(t *testing.T) {
 	}
 	got, _ := drainTransfer(t, ch)
 	if len(got) != 1 {
-		t.Errorf("IXFR no-op should return 1 RR (single SOA), got %d: %v", len(got), got)
+		t.Errorf(
+			"IXFR no-op should return 1 RR (single SOA), got %d: %v",
+			len(got),
+			got,
+		)
 	}
 	if _, ok := got[0].(*dns.SOA); !ok {
 		t.Errorf("IXFR no-op RR should be SOA, got %v", got[0])
@@ -247,13 +270,18 @@ func TestTransferCatalog_IXFRNoOp(t *testing.T) {
 func TestPollOnce_PopulatesCatalogCache(t *testing.T) {
 	mux, plugin := newMockPlugin(t)
 	plugin.cache = zonecache.New(8)
-	mux.HandleFunc("/api/plugins/netbox-dns/zones/", catalogZonesHandler(
-		fixtureActiveZonesForCatalog, fixtureCatalogZone,
-	))
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/zones/", catalogZonesHandler(
+			fixtureActiveZonesForCatalog, fixtureCatalogZone,
+		),
+	)
 	// Records endpoint exists for the active zones path; return empty.
-	mux.HandleFunc("/api/plugins/netbox-dns/records/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, `{"count":0,"next":null,"previous":null,"results":[]}`)
-	})
+	mux.HandleFunc(
+		"/api/plugins/netbox-dns/records/",
+		func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, `{"count":0,"next":null,"previous":null,"results":[]}`)
+		},
+	)
 
 	plugin.pollOnce()
 
