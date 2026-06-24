@@ -7,17 +7,20 @@ import (
 
 	"github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/zonecache"
 	"github.com/miekg/dns"
 )
 
 type Lookup struct {
-	Client      *netbox.Client
-	Logger      *log.P
-	QName       string
-	QType       uint16
-	Family      int
-	ViewNames   []string
-	ViewExclude []string
+	Client        *netbox.Client
+	Logger        *log.P
+	QName         string
+	QType         uint16
+	Family        int
+	ViewNames     []string
+	ViewExclude   []string
+	CatalogPrefix string
+	Cache         *zonecache.Cache
 
 	settledOnce  sync.Once
 	settledViews []string
@@ -26,6 +29,13 @@ type Lookup struct {
 func (l *Lookup) Run() (*Response, error) {
 	nt := strings.TrimSuffix(l.QName, ".")
 	l.settleViews()
+
+	// gather catalog zones
+	if cz, err := l.catalogZones(nt); err != nil {
+		return nil, err
+	} else if cz != nil {
+		return cz, nil
+	}
 
 	// check if zone exists and is active
 	z, err := l.matchZone(nt)

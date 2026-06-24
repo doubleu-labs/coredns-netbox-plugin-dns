@@ -40,3 +40,59 @@ func (l *Lookup) matchZone(n string) (*netbox.Zone, error) {
 	}
 	return out, nil
 }
+
+func (l *Lookup) catalogZones(n string) (*Response, error) {
+	if l.QType != dns.TypeSOA && l.QType != dns.TypeNS {
+		return nil, nil
+	}
+
+	zs, err := netbox.GetCatalogZones(l.Client, l.settledViews, l.CatalogPrefix)
+	if err != nil {
+		return nil, err
+	}
+	var cz *netbox.Zone
+	for k, v := range zs {
+		if strings.EqualFold(v.Name, n) {
+			cz = &zs[k]
+			break
+		}
+	}
+	if cz == nil {
+		return nil, nil
+	}
+
+	rq := &netbox.RecordQuery{
+		Zone: cz,
+	}
+	switch l.QType {
+	case dns.TypeSOA:
+		rq.Type = []string{"SOA", "NS"}
+	case dns.TypeNS:
+		rq.Type = []string{"NS"}
+	}
+	recs, err := rq.GetRecords(l.Client)
+	if err != nil {
+		return nil, err
+	}
+	crrs := make([]dns.RR, 0, len(recs))
+	for _, rec := range recs {
+		var rrErr error
+		rr, rrErr := rec.ToRR()
+		if rrErr != nil {
+			return nil, err
+		}
+		crrs = append(crrs, rr)
+	}
+	r := &Response{
+		Result: Success,
+	}
+	switch l.QType {
+	case dns.TypeSOA:
+		r.Answer = l.filterRRByType(crrs, dns.TypeSOA)
+		r.Ns = l.filterRRByType(crrs, dns.TypeNS)
+	case dns.TypeNS:
+		r.Answer = l.filterRRByType(crrs, dns.TypeNS)
+	}
+
+	return r, nil
+}

@@ -53,6 +53,7 @@ type NetboxDNS struct {
 	// can call NextSerial without a guard; whether any catalog actually
 	// exists is decided per poll cycle by GetCatalogZones.
 	catalogTracker *catalogTracker
+	catalogPrefix  string
 }
 
 func NewNetboxDNS() *NetboxDNS {
@@ -108,39 +109,13 @@ func (netboxdns *NetboxDNS) ServeDNS(
 		requestDuration.WithLabelValues(respondingZone).Observe(time.Since(start).Seconds())
 	}()
 
-	// Catalog zones are status=parked so the normal lookup path (which
-	// calls matchZone → GetZones with status=active) would return
-	// NXDOMAIN. Handle SOA and NS queries for catalogs here so
-	// secondaries can poll the SOA serial before initiating AXFR.
-	if qtype == dns.TypeSOA || qtype == dns.TypeNS {
-		if resp, err := netboxdns.serveCatalogMeta(qname, qtype); err != nil {
-			requestsTotal.WithLabelValues(
-				respondingZone,
-				rcodeLabel(dns.RcodeServerFailure),
-			).Inc()
-			return dns.RcodeServerFailure, err
-		} else if resp != nil {
-			respMsg := &dns.Msg{Answer: resp.Answer, Ns: resp.Ns}
-			respMsg.SetReply(reqMsg)
-			respMsg.Authoritative = true
-			requestsTotal.WithLabelValues(
-				respondingZone,
-				rcodeLabel(dns.RcodeSuccess),
-			).Inc()
-			err := respWriter.WriteMsg(respMsg)
-			if err != nil {
-				return dns.RcodeServerFailure, err
-			}
-			return dns.RcodeSuccess, nil
-		}
-	}
-
 	l := &lookup.Lookup{
-		Client: netboxdns.requestClient,
-		Logger: &logger,
-		QName:  qname,
-		QType:  qtype,
-		Family: family,
+		Client:        netboxdns.requestClient,
+		Logger:        &logger,
+		QName:         qname,
+		QType:         qtype,
+		Family:        family,
+		CatalogPrefix: netboxdns.catalogPrefix,
 	}
 	response, err := l.Run()
 	if err != nil {
