@@ -24,9 +24,17 @@ func (n *NetboxDNS) getActiveZones() ([]netbox.Zone, error) {
 // getCatalogZones returns catalog zones respecting the configured view filter.
 func (n *NetboxDNS) getCatalogZones() ([]netbox.Zone, error) {
 	if len(n.viewNames) <= 1 && len(n.viewExclude) == 0 {
-		return netbox.GetCatalogZones(n.requestClient, n.viewName)
+		return netbox.GetCatalogZones(
+			n.requestClient,
+			[]string{n.viewName},
+			n.catalogPrefix,
+		)
 	}
-	zones, err := netbox.GetCatalogZones(n.requestClient, "")
+	zones, err := netbox.GetCatalogZones(
+		n.requestClient,
+		[]string{""},
+		n.catalogPrefix,
+	)
 	if err != nil {
 		return nil, err
 	}
