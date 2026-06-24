@@ -127,7 +127,10 @@ func (netboxdns *NetboxDNS) ServeDNS(
 				respondingZone,
 				rcodeLabel(dns.RcodeSuccess),
 			).Inc()
-			respWriter.WriteMsg(respMsg)
+			err := respWriter.WriteMsg(respMsg)
+			if err != nil {
+				return dns.RcodeServerFailure, err
+			}
 			return dns.RcodeSuccess, nil
 		}
 	}
@@ -184,7 +187,10 @@ func (netboxdns *NetboxDNS) ServeDNS(
 		respondingZone,
 		rcodeLabel(respMsg.Rcode),
 	).Inc()
-	respWriter.WriteMsg(respMsg)
+	err = respWriter.WriteMsg(respMsg)
+	if err != nil {
+		return dns.RcodeServerFailure, err
+	}
 	return dns.RcodeSuccess, nil
 }
 
