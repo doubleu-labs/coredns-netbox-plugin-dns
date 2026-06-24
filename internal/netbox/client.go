@@ -6,29 +6,33 @@ import (
 	"net/url"
 )
 
-// Token is a string that prints a redaction statement.
-type Token struct {
+type token struct {
 	raw string
+}
+
+func newToken(s string) *token {
+	return &token{raw: s}
 }
 
 const redacted = "[REDACTED]"
 
 // Format redacts the token when printed.
-func (t *Token) Format(s fmt.State, _ rune) {
+func (t *token) Format(s fmt.State, _ rune) {
 	_, _ = s.Write([]byte(redacted))
 }
 
 // Client for interacting with the Netbox API.
 type Client struct {
 	*http.Client
+
+	token     *token
 	NetboxURL *url.URL
-	token     *Token
 	UserAgent string
 }
 
 // SetToken sets the token for the Client.
-func (c *Client) SetToken(token string) {
-	c.token = &Token{raw: token}
+func (c *Client) SetToken(t string) {
+	c.token = newToken(t)
 }
 
 // HasToken returns true if the Client has a token set.
