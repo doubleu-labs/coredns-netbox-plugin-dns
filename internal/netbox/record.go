@@ -31,7 +31,7 @@ type RecordQuery struct {
 	Zone *Zone
 }
 
-func (rq *RecordQuery) Encode() string {
+func (rq *RecordQuery) encode() string {
 	out := url.Values{}
 
 	if rq.FQDN != "" {
@@ -57,7 +57,7 @@ func (rq *RecordQuery) Encode() string {
 
 func (rq *RecordQuery) GetRecords(c *Client) ([]Record, error) {
 	u := urlRecords(c.NetboxURL)
-	u.RawQuery = rq.Encode()
+	u.RawQuery = rq.encode()
 	rs, err := getMany[Record](c, u.String())
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func urlRecords(u *url.URL) *url.URL {
 
 func GetRecordsQuery(c *Client, q *RecordQuery) ([]Record, error) {
 	reqUrl := urlRecords(c.NetboxURL)
-	reqUrl.RawQuery = q.Encode()
+	reqUrl.RawQuery = q.encode()
 	records, err := getMany[Record](c, reqUrl.String())
 	if err != nil {
 		return nil, err
