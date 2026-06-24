@@ -4,19 +4,19 @@ on:
   workflow_dispatch:
   push:
     tags:
-    - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+"
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
-    - uses: wranders/markdown-to-pages-action@v1
-      with:
-        out_path: out
-        token: ${{ secrets.GITHUB_TOKEN }}
-    - uses: actions/upload-pages-artifact@v4
-      with:
-        path: out
+      - uses: actions/checkout@v6
+      - uses: wranders/markdown-to-pages-action@v1
+        with:
+          out_path: out
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: out
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -27,5 +27,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-    - uses: actions/deploy-pages@v4
-      id: deployment
+      - uses: actions/deploy-pages@v4
+        id: deployment
