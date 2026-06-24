@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-type ManyResponse[T any] struct {
+type manyResponse[T any] struct {
 	Count    int    `json:"count"`
 	Next     string `json:"next"`
 	Previous string `json:"previous"`
@@ -71,7 +71,7 @@ func getMany[T any](c *Client, uri string) ([]T, error) {
 	var out []T
 
 	for nextUri != "" {
-		resp, err := get[ManyResponse[T]](c, nextUri)
+		resp, err := get[manyResponse[T]](c, nextUri)
 		if err != nil {
 			return nil, err
 		}
