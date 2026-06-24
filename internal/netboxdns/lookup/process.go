@@ -31,14 +31,9 @@ func (l *Lookup) processOrigin(z *netbox.Zone, n string) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	rrs := make([]dns.RR, 0, len(recs))
-	for _, rec := range recs {
-		var err error
-		rr, err := rec.ToRR()
-		if err != nil {
-			return nil, err
-		}
-		rrs = append(rrs, rr)
+	rrs, err := recs.ToRRs()
+	if err != nil {
+		return nil, err
 	}
 	a := l.filterRRByType(rrs, dns.TypeSOA)
 	ns := l.filterRRByType(rrs, dns.TypeNS)

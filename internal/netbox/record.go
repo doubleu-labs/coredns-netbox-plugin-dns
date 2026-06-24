@@ -24,11 +24,14 @@ type Record struct {
 	FQDN          string  `json:"fqdn"`
 }
 
+type Records []Record
+
 type RecordQuery struct {
-	FQDN string
-	Name string
-	Type []string
-	Zone *Zone
+	FQDN        string
+	Name        string
+	Type        []string
+	TypeExclude []string
+	Zone        *Zone
 }
 
 func (rq *RecordQuery) encode() string {
@@ -48,6 +51,12 @@ func (rq *RecordQuery) encode() string {
 		}
 	}
 
+	if len(rq.TypeExclude) != 0 {
+		for _, t := range rq.TypeExclude {
+			out.Add("type__n", t)
+		}
+	}
+
 	if rq.Zone != nil {
 		out.Set("zone_id", strconv.Itoa(rq.Zone.ID))
 	}
@@ -55,7 +64,7 @@ func (rq *RecordQuery) encode() string {
 	return out.Encode()
 }
 
-func (rq *RecordQuery) GetRecords(c *Client) ([]Record, error) {
+func (rq *RecordQuery) GetRecords(c *Client) (Records, error) {
 	u := urlRecords(c.NetboxURL)
 	u.RawQuery = rq.encode()
 	rs, err := getMany[Record](c, u.String())
@@ -118,6 +127,18 @@ func (r *Record) ToRR() (dns.RR, error) {
 		return nil, err
 	}
 	return rr, nil
+}
+
+func (r *Records) ToRRs() ([]dns.RR, error) {
+	rrs := make([]dns.RR, 0, len(*r))
+	for _, rr := range *r {
+		rrr, err := rr.ToRR()
+		if err != nil {
+			return rrs, err
+		}
+		rrs = append(rrs, rrr)
+	}
+	return rrs, nil
 }
 
 func urlRecords(u *url.URL) *url.URL {

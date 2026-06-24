@@ -102,13 +102,9 @@ func (l *Lookup) direct(z *netbox.Zone) (*Response, error) {
 	if len(recs) <= 0 {
 		return nil, nil
 	}
-	arrs := make([]dns.RR, 0, len(recs))
-	for _, r := range recs {
-		rr, err := r.ToRR()
-		if err != nil {
-			return nil, err
-		}
-		arrs = append(arrs, rr)
+	arrs, err := recs.ToRRs()
+	if err != nil {
+		return nil, err
 	}
 	ers, err := l.processExtra(z, arrs, l.Family)
 	if err != nil {
@@ -147,13 +143,9 @@ func (l *Lookup) delegate(z *netbox.Zone) (*Response, error) {
 	if len(recs) <= 0 {
 		return nil, nil
 	}
-	var nsrrs []dns.RR
-	for _, rec := range recs {
-		rr, err := rec.ToRR()
-		if err != nil {
-			return nil, err
-		}
-		nsrrs = append(nsrrs, rr)
+	nsrrs, err := recs.ToRRs()
+	if err != nil {
+		return nil, err
 	}
 	ers, err := l.processExtra(z, nsrrs, l.Family)
 	if err != nil {

@@ -74,14 +74,9 @@ func (l *Lookup) catalogZones(n string) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	crrs := make([]dns.RR, 0, len(recs))
-	for _, rec := range recs {
-		var rrErr error
-		rr, rrErr := rec.ToRR()
-		if rrErr != nil {
-			return nil, err
-		}
-		crrs = append(crrs, rr)
+	crrs, err := recs.ToRRs()
+	if err != nil {
+		return nil, err
 	}
 	r := &Response{
 		Result: Success,
