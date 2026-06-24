@@ -1,4 +1,3 @@
-
 PLUGINS = [
     'netbox_dns',
 ]
