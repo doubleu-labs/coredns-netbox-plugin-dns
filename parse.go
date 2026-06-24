@@ -18,15 +18,16 @@ var tokenFuncs tokenFuncMap
 
 func init() {
 	tokenFuncs = tokenFuncMap{
-		"fallthrough":   parseFallthrough,
-		"timeout":       parseTimeout,
-		"tls":           parseTLS,
-		"token":         parseToken,
-		"url":           parseUrl,
-		"view":          parseView,
-		"view_exclude":  parseViewExclude,
-		"poll_interval": parsePollInterval,
-		"ixfr_history":  parseIXFRHistory,
+		"fallthrough":    parseFallthrough,
+		"timeout":        parseTimeout,
+		"tls":            parseTLS,
+		"token":          parseToken,
+		"url":            parseUrl,
+		"view":           parseView,
+		"view_exclude":   parseViewExclude,
+		"poll_interval":  parsePollInterval,
+		"ixfr_history":   parseIXFRHistory,
+		"catalog_prefix": parseCatalogPrefix,
 	}
 }
 
@@ -231,6 +232,17 @@ func parseIXFRHistory(
 		return controller.Err(`"ixfr_history" must be >= 0`)
 	}
 	netboxdns.ixfrHistory = n
+	return nil
+}
+
+func parseCatalogPrefix(
+	controller *caddy.Controller,
+	netboxdns *NetboxDNS,
+) error {
+	if !controller.NextArg() {
+		return controller.Err(`no value for "catalog_prefix" provided`)
+	}
+	netboxdns.catalogPrefix = controller.Val()
 	return nil
 }
 

@@ -95,6 +95,7 @@ netboxdns [ZONES...] {
     view_exclude VIEWS...
     poll_interval DURATION
     ixfr_history COUNT
+    catalog_prefix PREFIX
 }
 ```
 
@@ -154,6 +155,9 @@ Netbox API
   stored per zone. When a secondary requests an IXFR with a serial older than
   the oldest snapshot, the plugin falls back to a full AXFR. Set to `0` to
   disable the poller entirely (AXFR-only mode).
+
+- **`catalog_prefix PREFIX`** (DEFAULT=`catalog`): Prefix for catalog zone
+  names. Catalog zones are special zones that contain a list of member zones.
 
 ## Metrics
 
