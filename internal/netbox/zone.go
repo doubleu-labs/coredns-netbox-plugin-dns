@@ -3,7 +3,6 @@ package netbox
 import (
 	"net/url"
 	"strconv"
-	"strings"
 )
 
 // Zone represents a DNS zone provided by the Netbox API. Only the fields the
@@ -49,40 +48,35 @@ func urlZoneID(u *url.URL, id int) *url.URL {
 }
 
 // GetCatalogZones returns zones tagged for catalog publication. The
-// convention used by the plugin is "status=parked AND name has prefix
+// convention used by the plugin is "status=parked AND name has the prefix
 // 'cat.'": parked alone could be a real zone temporarily out of service,
-// and the cat. prefix alone could collide with a real domain, but the
+// and the cat. Prefix alone could collide with a real domain, but the
 // AND of both is an unambiguous opt-in declaration. The viewName scoping
 // behaves the same as for GetZones (per-view catalog zones are supported).
 //
 // Name-prefix filtering is done client-side because NetBox-dns has no
 // "zone name starts with" API filter.
-func GetCatalogZones(c *Client, viewName string) ([]Zone, error) {
-	requestUrl := urlZones(c.NetboxURL)
-	q := requestUrl.Query()
+func GetCatalogZones(c *Client, v []string, p string) ([]Zone, error) {
+	u := urlZones(c.NetboxURL)
+	q := u.Query()
 	q.Set("status", "parked")
-	if viewName != "" {
-		q.Set("view", viewName)
+	for _, n := range v {
+		q.Add("view", n)
 	}
-	requestUrl.RawQuery = q.Encode()
-	all, err := getMany[Zone](c, requestUrl.String())
+	q.Set("name__isw", p)
+	u.RawQuery = q.Encode()
+	zs, err := getMany[Zone](c, u.String())
 	if err != nil {
 		return nil, err
 	}
-	out := make([]Zone, 0, len(all))
-	for i := range all {
-		if strings.HasPrefix(strings.ToLower(all[i].Name), "cat.") {
-			out = append(out, all[i])
-		}
-	}
-	return out, nil
+	return zs, nil
 }
 
 // GetZones returns the active zones managed by netbox-dns. When viewName
-// is non-empty the result is filtered server-side to that view (NetBox
+// is non-empty, the result is filtered server-side to that view (NetBox
 // supports `?view=<name>` on /api/plugins/netbox-dns/zones/).
 //
-// Only zones with status=active are returned. NetBox-dns also has parked,
+// Only zones with status=active are returned. NetBox-dns also have parked,
 // deprecated, and reserved statuses; those represent zones that exist as
 // records-of-record but should not be served as authoritative DNS, so we
 // exclude them from every normal serving path (lookup, AXFR, IXFR poller).
