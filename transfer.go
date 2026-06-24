@@ -53,7 +53,7 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (
 
 	// IXFR no-op: requester already has the current (or newer) serial.
 	if serial != 0 && serial >= nbZone.SOASerial {
-		transfersTotal.WithLabelValues(nbZone.Name, "ixfr_noop").Inc()
+		n.metrics.TransfersTotal.WithLabelValues(nbZone.Name, "ixfr_noop").Inc()
 		ch := make(chan []dns.RR, 1)
 		ch <- []dns.RR{soa}
 		close(ch)
@@ -72,7 +72,8 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (
 				dns.Fqdn(nbZone.Name),
 				from.Serial,
 			)
-			transfersTotal.WithLabelValues(nbZone.Name, "ixfr_delta").Inc()
+			n.metrics.TransfersTotal.WithLabelValues(nbZone.Name, "ixfr_delta").
+				Inc()
 			return n.streamIXFR(soa, oldSOA, from, to), nil
 		}
 	}
@@ -81,9 +82,10 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (
 	// delta. The kind label distinguishes the two so AXFR fallbacks are
 	// visible without an extra metric.
 	if serial == 0 {
-		transfersTotal.WithLabelValues(nbZone.Name, "axfr").Inc()
+		n.metrics.TransfersTotal.WithLabelValues(nbZone.Name, "axfr").Inc()
 	} else {
-		transfersTotal.WithLabelValues(nbZone.Name, "ixfr_fallback").Inc()
+		n.metrics.TransfersTotal.WithLabelValues(nbZone.Name, "ixfr_fallback").
+			Inc()
 	}
 
 	ch := make(chan []dns.RR)
@@ -163,7 +165,10 @@ func (n *NetboxDNS) transferCatalog(
 
 	// IXFR no-op.
 	if serial != 0 && serial >= latest.Serial {
-		transfersTotal.WithLabelValues(catalog.Name, "catalog_ixfr_noop").Inc()
+		n.metrics.TransfersTotal.WithLabelValues(
+			catalog.Name,
+			"catalog_ixfr_noop",
+		).Inc()
 		ch := make(chan []dns.RR, 1)
 		ch <- []dns.RR{soa}
 		close(ch)
@@ -181,7 +186,7 @@ func (n *NetboxDNS) transferCatalog(
 				dns.Fqdn(catalog.Name),
 				from.Serial,
 			)
-			transfersTotal.WithLabelValues(
+			n.metrics.TransfersTotal.WithLabelValues(
 				catalog.Name,
 				"catalog_ixfr_delta",
 			).Inc()
@@ -190,7 +195,7 @@ func (n *NetboxDNS) transferCatalog(
 	}
 
 	// AXFR / IXFR fallback.
-	transfersTotal.WithLabelValues(catalog.Name, "catalog_axfr").Inc()
+	n.metrics.TransfersTotal.WithLabelValues(catalog.Name, "catalog_axfr").Inc()
 	ch := make(chan []dns.RR)
 	go func() {
 		defer close(ch)

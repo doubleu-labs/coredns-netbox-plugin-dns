@@ -9,6 +9,7 @@ import (
 	"github.com/coredns/coredns/plugin/pkg/fall"
 	"github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/request"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/metrics"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netboxdns/lookup"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/zonecache"
@@ -33,6 +34,7 @@ type NetboxDNS struct {
 	Next plugin.Handler
 
 	requestClient *netbox.Client
+	metrics       *metrics.Metrics
 
 	zones       []string
 	fall        fall.F
@@ -63,6 +65,7 @@ func NewNetboxDNS() *NetboxDNS {
 				Timeout: defaultHTTPClientTimeout,
 			},
 		},
+		metrics:        metrics.NewMetrics(pluginName),
 		zones:          []string{"."},
 		pollInterval:   defaultPollInterval,
 		ixfrHistory:    defaultIXFRHistory,
@@ -106,7 +109,8 @@ func (netboxdns *NetboxDNS) ServeDNS(
 	// recordServeResult so SERVFAIL paths are not lost.
 	start := time.Now()
 	defer func() {
-		requestDuration.WithLabelValues(respondingZone).Observe(time.Since(start).Seconds())
+		netboxdns.metrics.RequestDuration.WithLabelValues(respondingZone).
+			Observe(time.Since(start).Seconds())
 	}()
 
 	l := &lookup.Lookup{
@@ -119,7 +123,7 @@ func (netboxdns *NetboxDNS) ServeDNS(
 	}
 	response, err := l.Run()
 	if err != nil {
-		requestsTotal.WithLabelValues(
+		netboxdns.metrics.RequestsTotal.WithLabelValues(
 			respondingZone,
 			rcodeLabel(dns.RcodeServerFailure),
 		).Inc()
@@ -158,7 +162,7 @@ func (netboxdns *NetboxDNS) ServeDNS(
 		respMsg.Authoritative = false
 	}
 
-	requestsTotal.WithLabelValues(
+	netboxdns.metrics.RequestsTotal.WithLabelValues(
 		respondingZone,
 		rcodeLabel(respMsg.Rcode),
 	).Inc()

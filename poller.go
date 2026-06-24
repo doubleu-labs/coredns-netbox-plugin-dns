@@ -64,15 +64,15 @@ func (n *NetboxDNS) stopPollerAndWait() {
 func (n *NetboxDNS) pollOnce() {
 	start := time.Now()
 	defer func() {
-		pollDuration.Observe(time.Since(start).Seconds())
+		n.metrics.PollDuration.Observe(time.Since(start).Seconds())
 	}()
 	zones, err := n.getActiveZones()
 	if err != nil {
-		pollCyclesTotal.WithLabelValues("error").Inc()
+		n.metrics.PollCyclesTotal.WithLabelValues("error").Inc()
 		logger.Errorf("poller: listing zones: %v", err)
 		return
 	}
-	pollCyclesTotal.WithLabelValues("success").Inc()
+	n.metrics.PollCyclesTotal.WithLabelValues("success").Inc()
 	n.pollCatalogs(zones)
 	for i := range zones {
 		z := &zones[i]
@@ -99,8 +99,9 @@ func (n *NetboxDNS) pollOnce() {
 			continue
 		}
 		n.cache.Put(z.Name, z.SOASerial, rrs)
-		zoneSerial.WithLabelValues(z.Name).Set(float64(z.SOASerial))
-		cacheSnapshots.WithLabelValues(z.Name).Set(float64(n.cache.Len(z.Name)))
+		n.metrics.ZoneSerial.WithLabelValues(z.Name).Set(float64(z.SOASerial))
+		n.metrics.CacheSnapshots.WithLabelValues(z.Name).
+			Set(float64(n.cache.Len(z.Name)))
 	}
 }
 
@@ -120,9 +121,17 @@ func (n *NetboxDNS) pollCatalogs(activeZones []netbox.Zone) {
 		serial := n.catalogTracker.NextSerial(c.Name, activeZones)
 		rrs := buildCatalog(c, activeZones)
 		n.cache.Put(c.Name, serial, rrs)
-		zoneSerial.WithLabelValues(c.Name).Set(float64(serial))
-		cacheSnapshots.WithLabelValues(c.Name).Set(float64(n.cache.Len(c.Name)))
-		catalogMembers.WithLabelValues(c.Name).Set(float64(catalogMemberCount(c, activeZones)))
+		n.metrics.ZoneSerial.WithLabelValues(c.Name).Set(float64(serial))
+		n.metrics.CacheSnapshots.WithLabelValues(c.Name).
+			Set(float64(n.cache.Len(c.Name)))
+		n.metrics.CatalogMembers.WithLabelValues(c.Name).Set(
+			float64(
+				catalogMemberCount(
+					c,
+					activeZones,
+				),
+			),
+		)
 	}
 }
 

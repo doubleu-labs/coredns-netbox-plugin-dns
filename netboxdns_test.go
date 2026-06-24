@@ -12,6 +12,7 @@ import (
 
 	"github.com/coredns/coredns/plugin/pkg/dnstest"
 	"github.com/coredns/coredns/plugin/test"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/metrics"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
 	"github.com/miekg/dns"
 )
@@ -170,6 +171,7 @@ func ConfigureTokenAndPlugin(t *testing.T) {
 				Path:   testInstanceUrlPath,
 			},
 		},
+		metrics: metrics.NewMetrics("testing"),
 	}
 	netboxdnsPlugin.requestClient.SetToken(testInstanceToken)
 }
@@ -781,6 +783,7 @@ func TestOffline(t *testing.T) {
 				Path:   testInstanceUrlPath,
 			},
 		},
+		metrics: metrics.NewMetrics("testing"),
 	}
 	netboxdns.requestClient.SetToken(testInstanceToken)
 	tc := test.Case{
@@ -808,6 +811,7 @@ func TestUnauthorized(t *testing.T) {
 				Path:   testInstanceUrlPath,
 			},
 		},
+		metrics: metrics.NewMetrics("testing"),
 	}
 	netboxdns.requestClient.SetToken("noop")
 	tc := test.Case{
@@ -836,6 +840,7 @@ func TestFallthrough(t *testing.T) {
 				Path:   testInstanceUrlPath,
 			},
 		},
+		metrics: metrics.NewMetrics("testing"),
 	}
 	netboxdns.requestClient.SetToken(testInstanceToken)
 	netboxdns.fall.SetZonesFromArgs([]string{"out.example.com"})
@@ -864,6 +869,7 @@ func TestUnhandledZone(t *testing.T) {
 				Path:   testInstanceUrlPath,
 			},
 		},
+		metrics: metrics.NewMetrics("testing"),
 	}
 	netboxdns.requestClient.SetToken(testInstanceToken)
 	tc := test.Case{

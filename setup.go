@@ -7,6 +7,7 @@ import (
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/metrics"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
 )
 
@@ -27,7 +28,11 @@ func setup(controller *caddy.Controller) error {
 	if base == nil {
 		base = http.DefaultTransport
 	}
-	netboxdns.requestClient.Client.Transport = &instrumentedTransport{base: base}
+	netboxdns.requestClient.Client.Transport =
+		metrics.NewInstrumentedTransport(
+			base,
+			netboxdns.metrics,
+		)
 	// Fail fast on misconfiguration: NetBox returns HTTP 400 when an
 	// unknown view name is passed to /zones/?view=, so without this
 	// check every DNS query would silently produce SERVFAIL.
