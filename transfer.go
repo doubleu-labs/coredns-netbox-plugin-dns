@@ -28,7 +28,10 @@ const transferBatchSize = 100
 // rather than from the SOA Record returned by the records endpoint, which
 // keeps the wire form deterministic and avoids depending on miekg/dns being
 // able to round-trip the netbox-formatted SOA value string.
-func (n *NetboxDNS) Transfer(zone string, serial uint32) (<-chan []dns.RR, error) {
+func (n *NetboxDNS) Transfer(zone string, serial uint32) (
+	<-chan []dns.RR,
+	error,
+) {
 	zoneName := strings.TrimSuffix(zone, ".")
 	nbZone, err := n.findZone(zoneName)
 	if err != nil {
@@ -60,8 +63,15 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (<-chan []dns.RR, error
 	// IXFR delta: try to satisfy from the snapshot cache. The cache is
 	// only populated when the poller is enabled (ixfr_history > 0).
 	if serial != 0 && n.cache != nil {
-		if from, to, ok := n.cache.Diff(nbZone.Name, serial); ok && to.Serial == nbZone.SOASerial {
-			oldSOA := buildSOAWithSerial(nbZone, dns.Fqdn(nbZone.Name), from.Serial)
+		if from, to, ok := n.cache.Diff(
+			nbZone.Name,
+			serial,
+		); ok && to.Serial == nbZone.SOASerial {
+			oldSOA := buildSOAWithSerial(
+				nbZone,
+				dns.Fqdn(nbZone.Name),
+				from.Serial,
+			)
 			transfersTotal.WithLabelValues(nbZone.Name, "ixfr_delta").Inc()
 			return n.streamIXFR(soa, oldSOA, from, to), nil
 		}
@@ -124,9 +134,12 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (<-chan []dns.RR, error
 // fetching the active member zones once. The IXFR delta path is the same
 // streamIXFR helper used by member zones — diff/cache code does not need
 // to know that this is a catalog.
-func (n *NetboxDNS) transferCatalog(catalog *netbox.Zone, serial uint32) (<-chan []dns.RR, error) {
+func (n *NetboxDNS) transferCatalog(
+	catalog *netbox.Zone,
+	serial uint32,
+) (<-chan []dns.RR, error) {
 	var (
-		latest zonecache.Snapshot
+		latest    zonecache.Snapshot
 		hasCached bool
 	)
 	if n.cache != nil {
@@ -159,9 +172,19 @@ func (n *NetboxDNS) transferCatalog(catalog *netbox.Zone, serial uint32) (<-chan
 
 	// IXFR delta from cache.
 	if serial != 0 && n.cache != nil {
-		if from, to, ok := n.cache.Diff(catalog.Name, serial); ok && to.Serial == latest.Serial {
-			oldSOA := buildSOAWithSerial(catalog, dns.Fqdn(catalog.Name), from.Serial)
-			transfersTotal.WithLabelValues(catalog.Name, "catalog_ixfr_delta").Inc()
+		if from, to, ok := n.cache.Diff(
+			catalog.Name,
+			serial,
+		); ok && to.Serial == latest.Serial {
+			oldSOA := buildSOAWithSerial(
+				catalog,
+				dns.Fqdn(catalog.Name),
+				from.Serial,
+			)
+			transfersTotal.WithLabelValues(
+				catalog.Name,
+				"catalog_ixfr_delta",
+			).Inc()
 			return n.streamIXFR(soa, oldSOA, from, to), nil
 		}
 	}
@@ -222,7 +245,11 @@ func sendBatched(ch chan<- []dns.RR, rrs []dns.RR) {
 // buildSOAWithSerial returns a *dns.SOA identical to buildSOA(zone, fqdn)
 // but with the Serial field overridden. Used to construct the "old" SOA
 // that opens each IXFR difference sequence (RFC 1995 §4).
-func buildSOAWithSerial(zone *netbox.Zone, fqdn string, serial uint32) *dns.SOA {
+func buildSOAWithSerial(
+	zone *netbox.Zone,
+	fqdn string,
+	serial uint32,
+) *dns.SOA {
 	soa := buildSOA(zone, fqdn)
 	soa.Serial = serial
 	return soa
