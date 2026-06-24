@@ -3,6 +3,8 @@ package netboxdns
 import (
 	"context"
 	"net/http"
+	"slices"
+	"sync"
 	"time"
 
 	"github.com/coredns/coredns/plugin"
@@ -41,6 +43,9 @@ type NetboxDNS struct {
 	viewName    string   // single-view (server-side filter)
 	viewNames   []string // multi-view whitelist (client-side filter)
 	viewExclude []string // view blacklist (client-side filter)
+
+	settledOnce  sync.Once
+	settledViews []string
 
 	// IXFR snapshot history. ixfrHistory == 0 disables the poller and the
 	// IXFR delta path entirely (Transfer falls back to AXFR for stale
@@ -179,6 +184,15 @@ func rcodeLabel(rcode int) string {
 		return s
 	}
 	return "OTHER"
+}
+
+func (n *NetboxDNS) settleViews() {
+	for _, v := range n.viewNames {
+		if slices.Contains(n.viewExclude, v) {
+			continue
+		}
+		n.settledViews = append(n.settledViews, v)
+	}
 }
 
 func (netboxdns *NetboxDNS) nextOrFailure(

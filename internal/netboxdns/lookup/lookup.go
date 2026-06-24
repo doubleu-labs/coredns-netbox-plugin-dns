@@ -1,9 +1,7 @@
 package lookup
 
 import (
-	"slices"
 	"strings"
-	"sync"
 
 	"github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
@@ -17,18 +15,13 @@ type Lookup struct {
 	QName         string
 	QType         uint16
 	Family        int
-	ViewNames     []string
-	ViewExclude   []string
+	Views         []string
 	CatalogPrefix string
 	Cache         *zonecache.Cache
-
-	settledOnce  sync.Once
-	settledViews []string
 }
 
 func (l *Lookup) Run() (*Response, error) {
 	nt := strings.TrimSuffix(l.QName, ".")
-	l.settleViews()
 
 	// gather catalog zones
 	if cz, err := l.catalogZones(nt); err != nil {
@@ -90,16 +83,6 @@ func (l *Lookup) Run() (*Response, error) {
 		l.QName,
 	)
 	return &Response{Result: NameError}, nil
-}
-
-func (l *Lookup) settleViews() {
-	for _, v := range l.ViewNames {
-		if slices.Contains(l.ViewExclude, v) {
-			continue
-		}
-		l.settledViews = append(l.settledViews, v)
-	}
-
 }
 
 func (l *Lookup) direct(z *netbox.Zone) (*Response, error) {

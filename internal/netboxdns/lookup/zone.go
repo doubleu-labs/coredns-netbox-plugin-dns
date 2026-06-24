@@ -10,7 +10,7 @@ import (
 // matchZone returns the zone that matches the given name. If the name exists in
 // multiple views, the last checked view is returned and a warning is logged.
 func (l *Lookup) matchZone(n string) (*netbox.Zone, error) {
-	zs, err := netbox.GetZones(l.Client, l.settledViews)
+	zs, err := netbox.GetZones(l.Client, l.Views)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func (l *Lookup) matchZone(n string) (*netbox.Zone, error) {
 			}
 		}
 	}
-	if amb > 1 && len(l.settledViews) == 0 {
+	if amb > 1 && len(l.Views) == 0 {
 		l.Logger.Warningf(
 			"zone %q exists in %d views; configure 'view' or 'view_exclude' "+
 				"to disambiguate",
@@ -46,7 +46,7 @@ func (l *Lookup) catalogZones(n string) (*Response, error) {
 		return nil, nil
 	}
 
-	zs, err := netbox.GetCatalogZones(l.Client, l.settledViews, l.CatalogPrefix)
+	zs, err := netbox.GetCatalogZones(l.Client, l.Views, l.CatalogPrefix)
 	if err != nil {
 		return nil, err
 	}
