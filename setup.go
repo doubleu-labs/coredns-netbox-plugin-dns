@@ -32,9 +32,15 @@ func setup(controller *caddy.Controller) error {
 	// unknown view name is passed to /zones/?view=, so without this
 	// check every DNS query would silently produce SERVFAIL.
 	for _, vn := range netboxdns.viewNames {
-		if _, err := netbox.GetZones(netboxdns.requestClient, vn); err != nil {
-			return plugin.Error(pluginName, fmt.Errorf(
-				"validating netbox view %q: %w", vn, err))
+		if _, err := netbox.GetZones(
+			netboxdns.requestClient,
+			[]string{vn},
+		); err != nil {
+			return plugin.Error(
+				pluginName, fmt.Errorf(
+					"validating netbox view %q: %w", vn, err,
+				),
+			)
 		}
 	}
 	dnsserver.GetConfig(controller).AddPlugin(
@@ -44,14 +50,18 @@ func setup(controller *caddy.Controller) error {
 		},
 	)
 
-	controller.OnStartup(func() error {
-		netboxdns.startPoller()
-		return nil
-	})
-	controller.OnShutdown(func() error {
-		netboxdns.stopPollerAndWait()
-		return nil
-	})
+	controller.OnStartup(
+		func() error {
+			netboxdns.startPoller()
+			return nil
+		},
+	)
+	controller.OnShutdown(
+		func() error {
+			netboxdns.stopPollerAndWait()
+			return nil
+		},
+	)
 
 	logger.Info("successfully started netboxdns")
 	return nil

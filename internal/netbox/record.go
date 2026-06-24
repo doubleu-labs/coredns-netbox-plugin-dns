@@ -1,9 +1,20 @@
 package netbox
 
 import (
+	"fmt"
 	"net/url"
+	"regexp"
 	"strconv"
+	"strings"
+
+	"github.com/miekg/dns"
 )
+
+var txtMultiValueRegexp *regexp.Regexp
+
+func init() {
+	txtMultiValueRegexp = regexp.MustCompile(`[^\s"']+|"([^"]*)"|'([^']*)`)
+}
 
 type Record struct {
 	Type          string  `json:"type"`
@@ -42,6 +53,71 @@ func (rq *RecordQuery) Encode() string {
 	}
 
 	return out.Encode()
+}
+
+func (rq *RecordQuery) GetRecords(c *Client) ([]Record, error) {
+	u := urlRecords(c.NetboxURL)
+	u.RawQuery = rq.Encode()
+	rs, err := getMany[Record](c, u.String())
+	if err != nil {
+		return nil, err
+	}
+	if rq.Zone != nil {
+		for k, r := range rs {
+			if r.TTL == nil {
+				rs[k].TTL = &rq.Zone.DefaultTTL
+			}
+		}
+		return rs, nil
+	}
+	rrrs, err := resolveRecordTTLs(c, rs)
+	if err != nil {
+		return rs, err
+	}
+	return rrrs, nil
+}
+
+func (r *Record) ToRR() (dns.RR, error) {
+	qt := dns.StringToType[r.Type]
+	if qt == dns.TypeTXT {
+		var txt []string
+		if strings.HasPrefix(r.AbsoluteValue, `"`) {
+			v := txtMultiValueRegexp.FindAllString(r.AbsoluteValue, -1)
+			for i := range v {
+				v[i] = strings.Trim(v[i], `"`)
+				v[i] = strings.ReplaceAll(v[i], "\\r\\n", "")
+				v[i] = strings.ReplaceAll(v[i], "\\n", "")
+				v[i] = strings.TrimSpace(v[i])
+				if v[i] != "" {
+					txt = append(txt, v[i])
+				}
+			}
+		} else {
+			txt = append(txt, r.AbsoluteValue)
+		}
+		rr := &dns.TXT{
+			Hdr: dns.RR_Header{
+				Name:   r.FQDN,
+				Ttl:    *r.TTL,
+				Class:  dns.ClassINET,
+				Rrtype: dns.TypeTXT,
+			},
+			Txt: txt,
+		}
+		return rr, nil
+	}
+	s := fmt.Sprintf(
+		"%s %d IN %s %s",
+		r.FQDN,
+		*r.TTL,
+		dns.TypeToString[qt],
+		r.AbsoluteValue,
+	)
+	rr, err := dns.NewRR(s)
+	if err != nil {
+		return nil, err
+	}
+	return rr, nil
 }
 
 func urlRecords(u *url.URL) *url.URL {

@@ -12,9 +12,9 @@ import (
 // filter client-side.
 func (n *NetboxDNS) getActiveZones() ([]netbox.Zone, error) {
 	if len(n.viewNames) <= 1 && len(n.viewExclude) == 0 {
-		return netbox.GetZones(n.requestClient, n.viewName)
+		return netbox.GetZones(n.requestClient, []string{n.viewName})
 	}
-	zones, err := netbox.GetZones(n.requestClient, "")
+	zones, err := netbox.GetZones(n.requestClient, []string{""})
 	if err != nil {
 		return nil, err
 	}

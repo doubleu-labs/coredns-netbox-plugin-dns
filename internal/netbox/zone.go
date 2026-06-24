@@ -86,17 +86,17 @@ func GetCatalogZones(c *Client, viewName string) ([]Zone, error) {
 // deprecated, and reserved statuses; those represent zones that exist as
 // records-of-record but should not be served as authoritative DNS, so we
 // exclude them from every normal serving path (lookup, AXFR, IXFR poller).
-func GetZones(requestClient *Client, viewName string) ([]Zone, error) {
-	requestUrl := urlZones(requestClient.NetboxURL)
-	q := requestUrl.Query()
+func GetZones(c *Client, v []string) ([]Zone, error) {
+	u := urlZones(c.NetboxURL)
+	q := u.Query()
 	q.Set("status", "active")
-	if viewName != "" {
-		q.Set("view", viewName)
+	for _, n := range v {
+		q.Add("view", n)
 	}
-	requestUrl.RawQuery = q.Encode()
-	zones, err := getMany[Zone](requestClient, requestUrl.String())
+	u.RawQuery = q.Encode()
+	z, err := getMany[Zone](c, u.String())
 	if err != nil {
 		return nil, err
 	}
-	return zones, nil
+	return z, nil
 }

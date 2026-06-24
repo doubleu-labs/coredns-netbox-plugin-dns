@@ -33,7 +33,7 @@ func TestGetZones_Success(t *testing.T) {
 		},
 	)
 
-	zones, err := GetZones(client, "")
+	zones, err := GetZones(client, []string{""})
 	if err != nil {
 		t.Fatalf("GetZones: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestGetZones_Empty(t *testing.T) {
 			writeJSON(w, fixtureZonesEmpty)
 		},
 	)
-	zones, err := GetZones(client, "")
+	zones, err := GetZones(client, []string{""})
 	if err != nil {
 		t.Fatalf("GetZones: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestGetZones_WithView_AppendsQueryParam(t *testing.T) {
 		},
 	)
 
-	if _, err := GetZones(client, "internal"); err != nil {
+	if _, err := GetZones(client, []string{"internal"}); err != nil {
 		t.Fatalf("GetZones: %v", err)
 	}
 	if gotView != "internal" {
@@ -98,7 +98,7 @@ func TestGetZones_AlwaysFiltersStatusActive(t *testing.T) {
 		},
 	)
 
-	if _, err := GetZones(client, ""); err != nil {
+	if _, err := GetZones(client, []string{""}); err != nil {
 		t.Fatalf("GetZones: %v", err)
 	}
 	if gotStatus != "active" {
@@ -132,7 +132,7 @@ func TestGetZones_ParsesNestedView(t *testing.T) {
 		},
 	)
 
-	zones, err := GetZones(client, "internal")
+	zones, err := GetZones(client, []string{"internal"})
 	if err != nil {
 		t.Fatalf("GetZones: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestGetZones_APIError(t *testing.T) {
 			http.Error(w, "boom", http.StatusInternalServerError)
 		},
 	)
-	if _, err := GetZones(client, ""); err == nil {
+	if _, err := GetZones(client, []string{""}); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }

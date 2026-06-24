@@ -10,6 +10,7 @@ import (
 	"github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/request"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netboxdns/lookup"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/zonecache"
 	"github.com/miekg/dns"
 )
@@ -131,7 +132,14 @@ func (netboxdns *NetboxDNS) ServeDNS(
 		}
 	}
 
-	response, err := netboxdns.lookup(qname, qtype, family)
+	l := &lookup.Lookup{
+		Client: netboxdns.requestClient,
+		Logger: &logger,
+		QName:  qname,
+		QType:  qtype,
+		Family: family,
+	}
+	response, err := l.Run()
 	if err != nil {
 		requestsTotal.WithLabelValues(
 			respondingZone,
@@ -139,7 +147,7 @@ func (netboxdns *NetboxDNS) ServeDNS(
 		).Inc()
 		return dns.RcodeServerFailure, err
 	}
-	if response.LookupResult == lookupNameError {
+	if response.Result == lookup.NameError {
 		if netboxdns.fall.Through(qname) {
 			logger.Debugf(
 				"forwarding request [%s] %q to next plugin",
@@ -147,13 +155,13 @@ func (netboxdns *NetboxDNS) ServeDNS(
 				qname,
 			)
 			return netboxdns.nextOrFailure(reqContext, respWriter, reqMsg)
-		} else {
-			logger.Debugf(
-				"no records for [%s] %q; fallthrough not enabled",
-				dns.TypeToString[qtype],
-				qname,
-			)
 		}
+		logger.Debugf(
+			"no records for [%s] %q; fallthrough not enabled",
+			dns.TypeToString[qtype],
+			qname,
+		)
+
 	}
 
 	respMsg := &dns.Msg{
@@ -164,11 +172,11 @@ func (netboxdns *NetboxDNS) ServeDNS(
 	respMsg.SetReply(reqMsg)
 	respMsg.Authoritative = true
 
-	switch response.LookupResult {
-	case lookupSuccess:
-	case lookupNameError:
+	switch response.Result {
+	case lookup.Success:
+	case lookup.NameError:
 		respMsg.Rcode = dns.RcodeNameError
-	case lookupDelegation:
+	case lookup.Delegation:
 		respMsg.Authoritative = false
 	}
 

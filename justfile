@@ -20,7 +20,7 @@ test: instance-start
     go test \
         -coverprofile=coverage.out \
         -coverpkg=github.com/doubleu-labs/coredns-netbox-plugin-dns,github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox \
-        .
+        . ./internal/...
 
 coverage: test
     go tool cover -html=coverage.out
