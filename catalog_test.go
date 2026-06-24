@@ -1,7 +1,6 @@
 package netboxdns
 
 import (
-	"net/http"
 	"testing"
 
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
@@ -51,19 +50,6 @@ const fixtureActiveZonesForCatalog = `{
          "soa_expire": 2419200, "soa_minimum": 3600}
     ]
 }`
-
-// catalogZonesHandler emits parked zones on ?status=parked and active zones
-// on ?status=active. The poller hits both endpoints in one cycle.
-func catalogZonesHandler(active, parked string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Query().Get("status") {
-		case "parked":
-			writeJSON(w, parked)
-		default:
-			writeJSON(w, active)
-		}
-	}
-}
 
 // ----- buildCatalog ----------------------------------------------------
 
