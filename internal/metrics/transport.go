@@ -12,7 +12,7 @@ const (
 )
 
 type InstrumentedTransport struct {
-	base    http.RoundTripper
+	http.RoundTripper
 	metrics *Metrics
 }
 
@@ -21,8 +21,8 @@ func NewInstrumentedTransport(
 	m *Metrics,
 ) *InstrumentedTransport {
 	return &InstrumentedTransport{
-		base:    rt,
-		metrics: m,
+		RoundTripper: rt,
+		metrics:      m,
 	}
 }
 
@@ -32,13 +32,13 @@ func (i *InstrumentedTransport) RoundTrip(r *http.Request) (
 ) {
 	e := netboxEndpointLabel(r.URL.Path)
 	s := time.Now()
-	resp, err := i.base.RoundTrip(r)
-	i.metrics.NetboxRequestDuration.observe(e, time.Since(s).Seconds())
+	resp, err := i.RoundTrip(r)
+	i.metrics.NetboxRequestDuration.Observe(e, time.Since(s).Seconds())
 	if err != nil {
-		i.metrics.NetboxRequestsTotal.inc(e, "error")
+		i.metrics.NetboxRequestsTotal.Inc(e, "error")
 		return resp, err
 	}
-	i.metrics.NetboxRequestsTotal.inc(e, http.StatusText(resp.StatusCode))
+	i.metrics.NetboxRequestsTotal.Inc(e, http.StatusText(resp.StatusCode))
 	return resp, nil
 }
 

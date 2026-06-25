@@ -1,135 +1,37 @@
 package metrics
 
 import (
-	"sync"
-
-	"github.com/coredns/coredns/plugin"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/metrics/metrics"
 )
 
 type Metrics struct {
-	RequestsTotal   *requestsTotal
-	RequestDuration *requestsDuration
+	RequestsTotal   *metrics.RequestsTotal
+	RequestDuration *metrics.RequestsDuration
 
-	NetboxRequestsTotal   *netboxRequestsTotal
-	NetboxRequestDuration *netboxRequestDuration
+	NetboxRequestsTotal   *metrics.NetboxRequestsTotal
+	NetboxRequestDuration *metrics.NetboxRequestDuration
 
-	TransfersTotal *transfersTotal
+	TransfersTotal *metrics.TransfersTotal
 
-	PollCyclesTotal *pollCyclesTotal
-	PollDuration    pollDuration
+	PollCyclesTotal *metrics.PollCyclesTotal
+	PollDuration    metrics.PollDuration
 
-	ZoneSerial     *zoneSerial
-	CacheSnapshots *cacheSnapshots
-	CatalogMembers *catalogMembers
+	ZoneSerial     *metrics.ZoneSerial
+	CacheSnapshots *metrics.CacheSnapshots
+	CatalogMembers *metrics.CatalogMembers
 }
 
 func NewMetrics(subsystem string) *Metrics {
 	return &Metrics{
-		RequestsTotal:         newRequestsTotal(subsystem),
-		RequestDuration:       newRequestsDuration(subsystem),
-		NetboxRequestsTotal:   newNetboxRequestsTotal(subsystem),
-		NetboxRequestDuration: newNetboxRequestDuration(subsystem),
-		TransfersTotal:        newTransfersTotal(subsystem),
-		PollCyclesTotal:       newPollCyclesTotal(subsystem),
-		PollDuration:          newPollDuration(subsystem),
-		ZoneSerial:            newZoneSerial(subsystem),
-		CacheSnapshots:        newCacheSnapshots(subsystem),
-		CatalogMembers:        newCatalogMembers(subsystem),
+		RequestsTotal:         metrics.NewRequestsTotal(subsystem),
+		RequestDuration:       metrics.NewRequestsDuration(subsystem),
+		NetboxRequestsTotal:   metrics.NewNetboxRequestsTotal(subsystem),
+		NetboxRequestDuration: metrics.NewNetboxRequestDuration(subsystem),
+		TransfersTotal:        metrics.NewTransfersTotal(subsystem),
+		PollCyclesTotal:       metrics.NewPollCyclesTotal(subsystem),
+		PollDuration:          metrics.NewPollDuration(subsystem),
+		ZoneSerial:            metrics.NewZoneSerial(subsystem),
+		CacheSnapshots:        metrics.NewCacheSnapshots(subsystem),
+		CatalogMembers:        metrics.NewCatalogMembers(subsystem),
 	}
-}
-
-func onceCounterVec(
-	once *sync.Once,
-	metric **prometheus.CounterVec,
-	s string,
-	n string,
-	h string,
-	l ...string,
-) {
-	once.Do(
-		func() {
-			*metric = promauto.NewCounterVec(
-				prometheus.CounterOpts{
-					Namespace: plugin.Namespace,
-					Subsystem: s,
-					Name:      n,
-					Help:      h,
-				},
-				l,
-			)
-		},
-	)
-}
-
-func onceHistogram(
-	once *sync.Once,
-	metric *prometheus.Histogram,
-	s string,
-	n string,
-	h string,
-	b []float64,
-) {
-	once.Do(
-		func() {
-			*metric = promauto.NewHistogram(
-				prometheus.HistogramOpts{
-					Namespace: plugin.Namespace,
-					Subsystem: s,
-					Name:      n,
-					Help:      h,
-					Buckets:   b,
-				},
-			)
-		},
-	)
-}
-
-func onceHistogramVec(
-	once *sync.Once,
-	metric **prometheus.HistogramVec,
-	s string,
-	n string,
-	h string,
-	b []float64,
-	l ...string,
-) {
-	once.Do(
-		func() {
-			*metric = promauto.NewHistogramVec(
-				prometheus.HistogramOpts{
-					Namespace: plugin.Namespace,
-					Subsystem: s,
-					Name:      n,
-					Help:      h,
-					Buckets:   b,
-				},
-				l,
-			)
-		},
-	)
-}
-
-func onceGaugeVec(
-	once *sync.Once,
-	metric **prometheus.GaugeVec,
-	s string,
-	n string,
-	h string,
-	l ...string,
-) {
-	once.Do(
-		func() {
-			*metric = promauto.NewGaugeVec(
-				prometheus.GaugeOpts{
-					Namespace: plugin.Namespace,
-					Subsystem: s,
-					Name:      n,
-					Help:      h,
-				},
-				l,
-			)
-		},
-	)
 }
