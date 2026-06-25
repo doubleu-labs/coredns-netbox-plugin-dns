@@ -6,7 +6,10 @@ import (
 	"time"
 )
 
-const netboxEndpointLabelPathPrefix = "/api/plugins/netbox-dns/"
+const (
+	netboxEndpointLabelPathPrefix = "/api/plugins/netbox-dns/"
+	fallbackEndpointLabel         = "other"
+)
 
 type InstrumentedTransport struct {
 	base    http.RoundTripper
@@ -30,29 +33,25 @@ func (i *InstrumentedTransport) RoundTrip(r *http.Request) (
 	e := netboxEndpointLabel(r.URL.Path)
 	s := time.Now()
 	resp, err := i.base.RoundTrip(r)
-	i.metrics.NetboxRequestDuration.WithLabelValues(e).
-		Observe(time.Since(s).Seconds())
+	i.metrics.NetboxRequestDuration.observe(e, time.Since(s).Seconds())
 	if err != nil {
-		i.metrics.NetboxRequestsTotal.WithLabelValues(e, "error").Inc()
+		i.metrics.NetboxRequestsTotal.inc(e, "error")
 		return resp, err
 	}
-	i.metrics.NetboxRequestsTotal.WithLabelValues(
-		e,
-		http.StatusText(resp.StatusCode),
-	).Inc()
+	i.metrics.NetboxRequestsTotal.inc(e, http.StatusText(resp.StatusCode))
 	return resp, nil
 }
 
 func netboxEndpointLabel(p string) string {
 	if !strings.HasPrefix(p, netboxEndpointLabelPathPrefix) {
-		return "other"
+		return fallbackEndpointLabel
 	}
 	r := strings.TrimPrefix(p, netboxEndpointLabelPathPrefix)
 	if i := strings.IndexByte(r, '/'); i >= 0 {
 		r = r[:i]
 	}
 	if r == "" {
-		return "other"
+		return fallbackEndpointLabel
 	}
 	return r
 }
