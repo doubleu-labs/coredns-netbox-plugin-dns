@@ -14,6 +14,8 @@ import (
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/metrics"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netboxdns/lookup"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/poller"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/view"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/zonecache"
 	"github.com/miekg/dns"
 )
@@ -43,6 +45,7 @@ type NetboxDNS struct {
 	viewName    string   // single-view (server-side filter)
 	viewNames   []string // multi-view whitelist (client-side filter)
 	viewExclude []string // view blacklist (client-side filter)
+	views       *view.View
 
 	settledOnce  sync.Once
 	settledViews []string
@@ -55,6 +58,7 @@ type NetboxDNS struct {
 	cache        *zonecache.Cache
 	stopPoller   chan struct{}
 	pollerDone   chan struct{}
+	poller       *poller.Poller
 
 	// Catalog zone state. catalogTracker is always non-nil so the poller
 	// can call NextSerial without a guard; whether any catalog actually
@@ -75,6 +79,7 @@ func NewNetboxDNS() *NetboxDNS {
 		pollInterval:   defaultPollInterval,
 		ixfrHistory:    defaultIXFRHistory,
 		catalogTracker: newCatalogTracker(),
+		poller:         poller.New(),
 	}
 }
 

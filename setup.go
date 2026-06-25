@@ -3,6 +3,7 @@ package netboxdns
 import (
 	"fmt"
 	"net/http"
+	"slices"
 
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/core/dnsserver"
@@ -33,21 +34,25 @@ func setup(controller *caddy.Controller) error {
 			base,
 			netboxdns.metrics,
 		)
-	// Fail fast on misconfiguration: NetBox returns HTTP 400 when an
-	// unknown view name is passed to /zones/?view=, so without this
-	// check every DNS query would silently produce SERVFAIL.
-	for _, vn := range netboxdns.viewNames {
-		if _, err := netbox.GetZones(
-			netboxdns.requestClient,
-			[]string{vn},
-		); err != nil {
-			return plugin.Error(
-				pluginName, fmt.Errorf(
-					"validating netbox view %q: %w", vn, err,
-				),
-			)
-		}
+
+	// instead of failing fast on an unknown view, log a warning containing the
+	// unknown view names and purge them from specified views to prevent
+	// SERVFAIL errors while keeping the server online.
+	if uv, err := netboxdns.processViews(); err != nil {
+		return plugin.Error(
+			pluginName,
+			fmt.Errorf(
+				"[setup] error getting views: %w",
+				err,
+			),
+		)
+	} else if len(uv) != 0 {
+		logger.Warningf(
+			"[setup] ignoring views not found in netbox: %v",
+			uv,
+		)
 	}
+
 	dnsserver.GetConfig(controller).AddPlugin(
 		func(next plugin.Handler) plugin.Handler {
 			netboxdns.Next = next
@@ -57,17 +62,42 @@ func setup(controller *caddy.Controller) error {
 
 	controller.OnStartup(
 		func() error {
-			netboxdns.startPoller()
+			netboxdns.poller.Start()
 			return nil
 		},
 	)
 	controller.OnShutdown(
 		func() error {
-			netboxdns.stopPollerAndWait()
+			netboxdns.poller.StopAndWait()
 			return nil
 		},
 	)
 
 	logger.Info("successfully started netboxdns")
 	return nil
+}
+
+func (n *NetboxDNS) processViews() ([]string, error) {
+	_, uv, err := netbox.GetViews(n.requestClient, n.views)
+	if err != nil {
+		return nil, err
+	}
+	if len(uv) != 0 {
+		for _, v := range uv {
+			n.views.Include = slices.DeleteFunc(
+				n.views.Include,
+				func(s string) bool {
+					return s == v
+				},
+			)
+			n.views.Exclude = slices.DeleteFunc(
+				n.views.Exclude,
+				func(s string) bool {
+					return s == v
+				},
+			)
+		}
+		return uv, nil
+	}
+	return nil, nil
 }
