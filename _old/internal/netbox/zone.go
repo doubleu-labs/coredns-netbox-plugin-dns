@@ -3,6 +3,8 @@ package netbox
 import (
 	"net/url"
 	"strconv"
+
+	internal "github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/view"
 )
 
 // Zone represents a DNS zone provided by the Netbox API. Only the fields the
@@ -56,12 +58,18 @@ func urlZoneID(u *url.URL, id int) *url.URL {
 //
 // Name-prefix filtering is done client-side because NetBox-dns has no
 // "zone name starts with" API filter.
-func GetCatalogZones(c *Client, v []string, p string) ([]Zone, error) {
+func GetCatalogZones(c *Client, v *internal.View, p string) (
+	[]Zone,
+	error,
+) {
 	u := urlZones(c.NetboxURL)
 	q := u.Query()
 	q.Set("status", "parked")
-	for _, n := range v {
+	for _, n := range v.Include {
 		q.Add("view", n)
+	}
+	for _, n := range v.Exclude {
+		q.Add("view__n", n)
 	}
 	q.Set("name__isw", p)
 	u.RawQuery = q.Encode()
@@ -80,12 +88,15 @@ func GetCatalogZones(c *Client, v []string, p string) ([]Zone, error) {
 // deprecated, and reserved statuses; those represent zones that exist as
 // records-of-record but should not be served as authoritative DNS, so we
 // exclude them from every normal serving path (lookup, AXFR, IXFR poller).
-func GetZones(c *Client, v []string) ([]Zone, error) {
+func GetZones(c *Client, v *internal.View) ([]Zone, error) {
 	u := urlZones(c.NetboxURL)
 	q := u.Query()
 	q.Set("status", "active")
-	for _, n := range v {
+	for _, n := range v.Include {
 		q.Add("view", n)
+	}
+	for _, n := range v.Exclude {
+		q.Add("view__n", n)
 	}
 	u.RawQuery = q.Encode()
 	z, err := getMany[Zone](c, u.String())

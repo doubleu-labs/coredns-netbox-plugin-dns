@@ -1,8 +1,8 @@
 package netboxdns
 
+// noinspection LongLine
 import (
 	"fmt"
-	"net/http"
 	"slices"
 
 	"github.com/coredns/caddy"
@@ -10,6 +10,8 @@ import (
 	"github.com/coredns/coredns/plugin"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/metrics"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netboxdns/config"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/view"
 )
 
 func init() {
@@ -17,23 +19,40 @@ func init() {
 }
 
 func setup(controller *caddy.Controller) error {
-	netboxdns := NewNetboxDNS()
-	if err := Parse(controller, netboxdns); err != nil {
-		return err
+	cfg, err := config.Parse(controller)
+	if err != nil {
+		return plugin.Error(pluginName, err)
 	}
-	// Wrap the HTTP client transport so every NetBox API round-trip is
-	// observed by the netbox_requests_total / netbox_request_duration
-	// collectors. Done after Parse so the tls{} block has had a chance to
-	// install its own base transport.
-	base := netboxdns.requestClient.Client.Transport
-	if base == nil {
-		base = http.DefaultTransport
+
+	m := metrics.NewMetrics(pluginName)
+	rq := netbox.NewClient(m)
+	if cfg.Timeout != 0 {
+		rq.SetTimeout(cfg.Timeout)
 	}
-	netboxdns.requestClient.Client.Transport =
-		metrics.NewInstrumentedTransport(
-			base,
-			netboxdns.metrics,
-		)
+	if cfg.TLS != nil {
+		rq.SetTLSConfig(cfg.TLS)
+	}
+	rq.SetToken(cfg.Token)
+	rq.NetboxURL = cfg.URL.JoinPath("api", "plugins", "netbox-dns")
+	rq.UserAgent = fmt.Sprintf("coredns plugin %s", pluginName)
+	v := view.New(cfg.Views, cfg.ViewsExclude)
+	netboxdns := &NetboxDNS{
+		requestClient: rq,
+		metrics:       m,
+		cache:         catalog_old.NewCache(cfg.IXFRHistory),
+		poller: catalog_old.NewPoller(
+			&logger,
+			m,
+			rq,
+			v,
+			&cfg.CatalogPrefix,
+		),
+		fall:         cfg.Fall,
+		ixfrHistory:  cfg.IXFRHistory,
+		pollInterval: cfg.PollInterval,
+		views:        v,
+		zones:        cfg.Zones,
+	}
 
 	// instead of failing fast on an unknown view, log a warning containing the
 	// unknown view names and purge them from specified views to prevent

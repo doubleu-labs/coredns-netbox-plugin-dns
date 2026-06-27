@@ -5,7 +5,7 @@ import (
 
 	"github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
-	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/zonecache"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/view"
 	"github.com/miekg/dns"
 )
 
@@ -15,9 +15,9 @@ type Lookup struct {
 	QName         string
 	QType         uint16
 	Family        int
-	Views         []string
+	Views         *view.View
 	CatalogPrefix string
-	Cache         *zonecache.Cache
+	Cache         *catalog_old.Cache
 }
 
 func (l *Lookup) Run() (*Response, error) {

@@ -1,6 +1,8 @@
 package view
 
-import "slices"
+import (
+	"slices"
+)
 
 type View struct {
 	Include []string

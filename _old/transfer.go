@@ -53,7 +53,7 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (
 
 	// IXFR no-op: requester already has the current (or newer) serial.
 	if serial != 0 && serial >= nbZone.SOASerial {
-		n.metrics.TransfersTotal.WithLabelValues(nbZone.Name, "ixfr_noop").Inc()
+		n.metrics.TransfersTotal.Inc(nbZone.Name, "ixfr_noop")
 		ch := make(chan []dns.RR, 1)
 		ch <- []dns.RR{soa}
 		close(ch)
@@ -72,8 +72,7 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (
 				dns.Fqdn(nbZone.Name),
 				from.Serial,
 			)
-			n.metrics.TransfersTotal.WithLabelValues(nbZone.Name, "ixfr_delta").
-				Inc()
+			n.metrics.TransfersTotal.Inc(nbZone.Name, "ixfr_delta")
 			return n.streamIXFR(soa, oldSOA, from, to), nil
 		}
 	}
@@ -82,52 +81,58 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (
 	// delta. The kind label distinguishes the two so AXFR fallbacks are
 	// visible without an extra metric.
 	if serial == 0 {
-		n.metrics.TransfersTotal.WithLabelValues(nbZone.Name, "axfr").Inc()
+		n.metrics.TransfersTotal.Inc(nbZone.Name, "axfr")
 	} else {
-		n.metrics.TransfersTotal.WithLabelValues(nbZone.Name, "ixfr_fallback").
-			Inc()
+		n.metrics.TransfersTotal.Inc(nbZone.Name, "ixfr_fallback")
 	}
 
 	ch := make(chan []dns.RR)
-	go func() {
-		defer close(ch)
-
-		records, err := netbox.GetRecordsQuery(
-			n.requestClient,
-			&netbox.RecordQuery{Zone: nbZone},
-		)
-		if err != nil {
-			logger.Errorf("transfer %s: fetching records: %v", zone, err)
-			return
-		}
-
-		// Drop SOA records returned by NetBox; we send the synthesized one
-		// as the opening and closing RR instead.
-		filtered := make([]netbox.Record, 0, len(records))
-		for i := range records {
-			if records[i].Type == "SOA" {
-				continue
-			}
-			filtered = append(filtered, records[i])
-		}
-
-		rrs, err := recordsToRR(filtered)
-		if err != nil {
-			logger.Errorf("transfer %s: converting records: %v", zone, err)
-			return
-		}
-
-		// Opening SOA.
-		ch <- []dns.RR{soa}
-
-		sendBatched(ch, rrs)
-
-		// Closing SOA (RFC 5936 §2.2 — "the last RR sent in the answer
-		// section MUST also be the SOA").
-		ch <- []dns.RR{soa}
-	}()
+	go n.streamZoneData(ch, nbZone, zone, soa)
 
 	return ch, nil
+}
+
+func (n *NetboxDNS) streamZoneData(
+	ch chan<- []dns.RR,
+	nbZone *netbox.Zone,
+	zone string,
+	soa *dns.SOA,
+) {
+	defer close(ch)
+
+	records, err := netbox.GetRecordsQuery(
+		n.requestClient,
+		&netbox.RecordQuery{Zone: nbZone},
+	)
+	if err != nil {
+		logger.Errorf("transfer %s: fetching records: %v", zone, err)
+		return
+	}
+
+	// Drop SOA records returned by NetBox; we send the synthesized one
+	// as the opening and closing RR instead.
+	filtered := make([]netbox.Record, 0, len(records))
+	for i := range records {
+		if records[i].Type == "SOA" {
+			continue
+		}
+		filtered = append(filtered, records[i])
+	}
+
+	rrs, err := recordsToRR(filtered)
+	if err != nil {
+		logger.Errorf("transfer %s: converting records: %v", zone, err)
+		return
+	}
+
+	// Opening SOA.
+	ch <- []dns.RR{soa}
+
+	sendBatched(ch, rrs)
+
+	// Closing SOA (RFC 5936 §2.2 — "the last RR sent in the answer
+	// section MUST also be the SOA").
+	ch <- []dns.RR{soa}
 }
 
 // transferCatalog serves AXFR/IXFR for a catalog zone. The catalog body
@@ -137,38 +142,35 @@ func (n *NetboxDNS) Transfer(zone string, serial uint32) (
 // streamIXFR helper used by member zones — diff/cache code does not need
 // to know that this is a catalog.
 func (n *NetboxDNS) transferCatalog(
-	catalog *netbox.Zone,
+	c *netbox.Zone,
 	serial uint32,
 ) (<-chan []dns.RR, error) {
 	var (
-		latest    zonecache.Snapshot
+		latest    catalog_old.Snapshot
 		hasCached bool
 	)
 	if n.cache != nil {
-		latest, hasCached = n.cache.Latest(catalog.Name)
+		latest, hasCached = n.cache.Latest(c.Name)
 	}
 	if !hasCached {
 		members, err := n.getActiveZones()
 		if err != nil {
 			return nil, err
 		}
-		latest = zonecache.Snapshot{
-			Serial: n.catalogTracker.NextSerial(catalog.Name, members),
-			RRs:    buildCatalog(catalog, members),
+		latest = catalog_old.Snapshot{
+			Serial: n.catalogTracker.NextSerial(c.Name, members),
+			RRs:    buildCatalog(c, members),
 		}
 		if n.cache != nil {
-			n.cache.Put(catalog.Name, latest.Serial, latest.RRs)
+			n.cache.Put(c.Name, latest.Serial, latest.RRs)
 		}
 	}
 
-	soa := buildSOAWithSerial(catalog, dns.Fqdn(catalog.Name), latest.Serial)
+	soa := buildSOAWithSerial(c, dns.Fqdn(c.Name), latest.Serial)
 
 	// IXFR no-op.
 	if serial != 0 && serial >= latest.Serial {
-		n.metrics.TransfersTotal.WithLabelValues(
-			catalog.Name,
-			"catalog_ixfr_noop",
-		).Inc()
+		n.metrics.TransfersTotal.Inc(c.Name, "catalog_ixfr_noop")
 		ch := make(chan []dns.RR, 1)
 		ch <- []dns.RR{soa}
 		close(ch)
@@ -178,24 +180,21 @@ func (n *NetboxDNS) transferCatalog(
 	// IXFR delta from cache.
 	if serial != 0 && n.cache != nil {
 		if from, to, ok := n.cache.Diff(
-			catalog.Name,
+			c.Name,
 			serial,
 		); ok && to.Serial == latest.Serial {
 			oldSOA := buildSOAWithSerial(
-				catalog,
-				dns.Fqdn(catalog.Name),
+				c,
+				dns.Fqdn(c.Name),
 				from.Serial,
 			)
-			n.metrics.TransfersTotal.WithLabelValues(
-				catalog.Name,
-				"catalog_ixfr_delta",
-			).Inc()
+			n.metrics.TransfersTotal.Inc(c.Name, "catalog_ixfr_delta")
 			return n.streamIXFR(soa, oldSOA, from, to), nil
 		}
 	}
 
 	// AXFR / IXFR fallback.
-	n.metrics.TransfersTotal.WithLabelValues(catalog.Name, "catalog_axfr").Inc()
+	n.metrics.TransfersTotal.Inc(c.Name, "catalog_axfr")
 	ch := make(chan []dns.RR)
 	go func() {
 		defer close(ch)
@@ -217,8 +216,8 @@ func (n *NetboxDNS) transferCatalog(
 func (n *NetboxDNS) streamIXFR(
 	newSOA *dns.SOA,
 	oldSOA *dns.SOA,
-	from zonecache.Snapshot,
-	to zonecache.Snapshot,
+	from catalog_old.Snapshot,
+	to catalog_old.Snapshot,
 ) <-chan []dns.RR {
 	removed, added := zonecache.Diff(from.RRs, to.RRs)
 

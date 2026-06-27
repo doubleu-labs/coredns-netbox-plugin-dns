@@ -30,7 +30,7 @@ func (l *Lookup) matchZone(n string) (*netbox.Zone, error) {
 			}
 		}
 	}
-	if amb > 1 && len(l.Views) == 0 {
+	if amb > 1 && len(l.Views.Include) == 0 && len(l.Views.Exclude) == 0 {
 		l.Logger.Warningf(
 			"zone %q exists in %d views; configure 'view' or 'view_exclude' "+
 				"to disambiguate",

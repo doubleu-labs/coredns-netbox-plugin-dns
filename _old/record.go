@@ -66,13 +66,3 @@ func recordToTXT(record netbox.Record) *dns.TXT {
 		Txt: txt,
 	}
 }
-
-func filterRRByType(rrs []dns.RR, recordType uint16) []dns.RR {
-	out := make([]dns.RR, 0)
-	for _, rr := range rrs {
-		if rr.Header().Rrtype == recordType {
-			out = append(out, rr)
-		}
-	}
-	return out
-}

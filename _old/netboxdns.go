@@ -2,7 +2,6 @@ package netboxdns
 
 import (
 	"context"
-	"net/http"
 	"slices"
 	"sync"
 	"time"
@@ -14,19 +13,11 @@ import (
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/metrics"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netboxdns/lookup"
-	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/poller"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/view"
-	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/zonecache"
 	"github.com/miekg/dns"
 )
 
-const (
-	defaultHTTPClientTimeout time.Duration = time.Second * 5
-	pluginName               string        = "netboxdns"
-
-	defaultPollInterval time.Duration = 300 * time.Second
-	defaultIXFRHistory  int           = 16
-)
+const pluginName string = "netboxdns"
 
 var logger log.P
 
@@ -55,32 +46,16 @@ type NetboxDNS struct {
 	// serials, which is the Phase 2 behaviour).
 	pollInterval time.Duration
 	ixfrHistory  int
-	cache        *zonecache.Cache
+	cache        *catalog_old.Cache
 	stopPoller   chan struct{}
 	pollerDone   chan struct{}
-	poller       *poller.Poller
+	poller       *catalog_old.Poller
 
 	// Catalog zone state. catalogTracker is always non-nil so the poller
 	// can call NextSerial without a guard; whether any catalog actually
 	// exists is decided per poll cycle by GetCatalogZones.
 	catalogTracker *catalogTracker
 	catalogPrefix  string
-}
-
-func NewNetboxDNS() *NetboxDNS {
-	return &NetboxDNS{
-		requestClient: &netbox.Client{
-			Client: &http.Client{
-				Timeout: defaultHTTPClientTimeout,
-			},
-		},
-		metrics:        metrics.NewMetrics(pluginName),
-		zones:          []string{"."},
-		pollInterval:   defaultPollInterval,
-		ixfrHistory:    defaultIXFRHistory,
-		catalogTracker: newCatalogTracker(),
-		poller:         poller.New(),
-	}
 }
 
 // Name implements the plugin.Handler interface
@@ -119,8 +94,10 @@ func (netboxdns *NetboxDNS) ServeDNS(
 	// recordServeResult so SERVFAIL paths are not lost.
 	start := time.Now()
 	defer func() {
-		netboxdns.metrics.RequestDuration.WithLabelValues(respondingZone).
-			Observe(time.Since(start).Seconds())
+		netboxdns.metrics.RequestDuration.Observe(
+			respondingZone,
+			time.Since(start).Seconds(),
+		)
 	}()
 
 	l := &lookup.Lookup{
@@ -133,10 +110,10 @@ func (netboxdns *NetboxDNS) ServeDNS(
 	}
 	response, err := l.Run()
 	if err != nil {
-		netboxdns.metrics.RequestsTotal.WithLabelValues(
+		netboxdns.metrics.RequestsTotal.Inc(
 			respondingZone,
 			rcodeLabel(dns.RcodeServerFailure),
-		).Inc()
+		)
 		return dns.RcodeServerFailure, err
 	}
 	if response.Result == lookup.NameError {
@@ -172,10 +149,10 @@ func (netboxdns *NetboxDNS) ServeDNS(
 		respMsg.Authoritative = false
 	}
 
-	netboxdns.metrics.RequestsTotal.WithLabelValues(
+	netboxdns.metrics.RequestsTotal.Inc(
 		respondingZone,
 		rcodeLabel(respMsg.Rcode),
-	).Inc()
+	)
 	err = respWriter.WriteMsg(respMsg)
 	if err != nil {
 		return dns.RcodeServerFailure, err
