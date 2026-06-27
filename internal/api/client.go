@@ -13,22 +13,22 @@ const (
 	defaultHTTPClientTimeout = 5 * time.Second
 	defaultUserAgent         = "coredns-netbox-plugin-dns"
 
-	metricsEndpointLabelPathPrefix = "/api/plugins/netbox-dns/"
-	metricsFallbackEndpointLabel   = "other"
+	metricsFallbackEndpointLabel = "other"
 )
 
-var NetboxClient *Client
-
 type Client struct {
-	client    *http.Client
-	token     *token
-	netboxURL *url.URL
-	userAgent string
+	client       *http.Client
+	token        *token
+	netboxURL    *url.URL
+	userAgent    string
+	activeStatus []string
+	viewsInclude []string
+	viewsExclude []string
 }
 
 // NewClient returns a new Netbox API client
 func NewClient(token string, u *url.URL) *Client {
-	NetboxClient = &Client{
+	return &Client{
 		client: &http.Client{
 			Timeout: defaultHTTPClientTimeout,
 			Transport: &instrumentedTransport{
@@ -40,40 +40,18 @@ func NewClient(token string, u *url.URL) *Client {
 		token:     newToken(token),
 		userAgent: defaultUserAgent,
 	}
-	return NetboxClient
 }
 
 // Do executes an HTTP request against the Netbox API.
 // `Authorization` and `User-Agent` headers are set automatically. Existing
 // values are not modified.
-func (c *Client) Do(req *http.Request) (*http.Response, error) {
-	req.Header.Set(
+func (c *Client) Do(r *http.Request) (*http.Response, error) {
+	r.Header.Set(
 		"Authorization",
 		fmt.Sprintf("Token %s", c.token.raw),
 	)
-	req.Header.Set("User-Agent", c.userAgent)
-	return c.client.Do(req)
-}
-
-// SetTransport sets the HTTP transport to be used by the client.
-// If existing transport is set and its TLSClientConfig is set, then it is
-// preserved and passed to the new transport.
-func (c *Client) SetTransport(t http.RoundTripper) {
-	if c.client.Transport == nil {
-		c.client.Transport = t
-		return
-	}
-
-	var tc *tls.Config
-	if c.client.Transport.(*http.Transport).TLSClientConfig != nil {
-		tc = c.client.Transport.(*http.Transport).TLSClientConfig
-	}
-
-	c.client.Transport = t
-
-	if tc != nil {
-		c.client.Transport.(*http.Transport).TLSClientConfig = tc
-	}
+	r.Header.Set("User-Agent", c.userAgent)
+	return c.client.Do(r)
 }
 
 // SetTLSConfig sets the TLS configuration to be used by the client.
@@ -82,8 +60,8 @@ func (c *Client) SetTLSConfig(t *tls.Config) {
 }
 
 // SetUserAgent sets the User-Agent header to be used by the client.
-func (c *Client) SetUserAgent(ua string) {
-	c.userAgent = ua
+func (c *Client) SetUserAgent(useragent string) {
+	c.userAgent = useragent
 }
 
 // SetTimeout sets the timeout used to be by the client.
@@ -98,32 +76,32 @@ type instrumentedTransport struct {
 }
 
 // RoundTrip implements the http.RoundTripper interface.
-func (it *instrumentedTransport) RoundTrip(req *http.Request) (
+func (it *instrumentedTransport) RoundTrip(r *http.Request) (
 	*http.Response,
 	error,
 ) {
-	l := it.endpointLabel(req.URL.Path)
-	s := time.Now()
-	resp, err := it.RoundTrip(req)
-	it.requestsDuration.Observe(l, time.Since(s).Seconds())
+	label := it.endpointLabel(r.URL.Path)
+	metricStart := time.Now()
+	response, err := it.RoundTrip(r)
+	it.requestsDuration.observe(label, time.Since(metricStart).Seconds())
 	if err != nil {
-		it.requestsTotal.IncError(l)
-		return resp, err
+		it.requestsTotal.incError(label)
+		return response, err
 	}
-	it.requestsTotal.IncStatusCode(l, resp.StatusCode)
-	return resp, nil
+	it.requestsTotal.incStatusCode(label, response.StatusCode)
+	return response, nil
 }
 
-func (*instrumentedTransport) endpointLabel(p string) string {
-	if !strings.HasPrefix(p, metricsEndpointLabelPathPrefix) {
+func (*instrumentedTransport) endpointLabel(uriPath string) string {
+	if !strings.HasPrefix(uriPath, "/"+apiPathString) {
 		return metricsFallbackEndpointLabel
 	}
-	r := strings.TrimPrefix(p, metricsEndpointLabelPathPrefix)
-	if i := strings.IndexByte(r, '/'); i >= 0 {
-		r = r[:i]
+	remaining := strings.TrimPrefix(uriPath, "/"+apiPathString)
+	if i := strings.IndexByte(remaining, '/'); i >= 0 {
+		remaining = remaining[:i]
 	}
-	if r == "" {
+	if remaining == "" {
 		return metricsFallbackEndpointLabel
 	}
-	return r
+	return remaining
 }

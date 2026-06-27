@@ -22,7 +22,7 @@ type requestDurationMetric struct {
 func newRequestDurationMetric() *requestDurationMetric {
 	metricRequestDurationOnce.Do(
 		func() {
-			o := prometheus.HistogramOpts{
+			opts := prometheus.HistogramOpts{
 				Namespace: plugin.Namespace,
 				Subsystem: core.MetricsSubsystem,
 				Name:      "netbox_request_duration_seconds",
@@ -31,7 +31,7 @@ func newRequestDurationMetric() *requestDurationMetric {
 				Buckets: prometheus.ExponentialBuckets(0.001, 2, 14),
 			}
 			metricRequestDuration = promauto.NewHistogramVec(
-				o,
+				opts,
 				[]string{"endpoint"},
 			)
 		},
@@ -41,8 +41,8 @@ func newRequestDurationMetric() *requestDurationMetric {
 	}
 }
 
-func (m *requestDurationMetric) Observe(endpoint string, d float64) {
-	m.metric.WithLabelValues(endpoint).Observe(d)
+func (m *requestDurationMetric) observe(endpoint string, duration float64) {
+	m.metric.WithLabelValues(endpoint).Observe(duration)
 }
 
 var (
@@ -57,7 +57,7 @@ type requestsTotalMetric struct {
 func newRequestsTotalMetric() *requestsTotalMetric {
 	metricRequestsTotalOnce.Do(
 		func() {
-			o := prometheus.CounterOpts{
+			opts := prometheus.CounterOpts{
 				Namespace: plugin.Namespace,
 				Subsystem: core.MetricsSubsystem,
 				Name:      "netbox_requests_total",
@@ -65,7 +65,7 @@ func newRequestsTotalMetric() *requestsTotalMetric {
 					"response code",
 			}
 			metricRequestsTotal = promauto.NewCounterVec(
-				o,
+				opts,
 				[]string{"endpoint", "code"},
 			)
 		},
@@ -75,14 +75,14 @@ func newRequestsTotalMetric() *requestsTotalMetric {
 	}
 }
 
-func (m *requestsTotalMetric) IncError(l string) {
-	m.metric.WithLabelValues(l, "error").Inc()
+func (m *requestsTotalMetric) incError(label string) {
+	m.metric.WithLabelValues(label, "error").Inc()
 }
 
-func (m *requestsTotalMetric) IncStatusCode(l string, c int) {
-	s := http.StatusText(c)
-	if s == "" {
-		s = "UNKNOWN"
+func (m *requestsTotalMetric) incStatusCode(label string, code int) {
+	status := http.StatusText(code)
+	if status == "" {
+		status = "UNKNOWN"
 	}
-	m.metric.WithLabelValues(l, s).Inc()
+	m.metric.WithLabelValues(label, status).Inc()
 }
