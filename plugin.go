@@ -15,14 +15,14 @@ func init() {
 	ensureDirectiveExecutionOrder(dnsserver.Directives)
 }
 
-func ensureDirectiveExecutionOrder(ds []string) {
-	coreIdx := slices.Index(ds, netboxdns.PluginName)
-	if coreIdx == -1 {
+func ensureDirectiveExecutionOrder(directives []string) {
+	pluginCoreIndex := slices.Index(directives, netboxdns.PluginName)
+	if pluginCoreIndex == -1 {
 		return
 	}
 	dnsserver.Directives = slices.Insert(
-		ds,
-		coreIdx,
+		directives,
+		pluginCoreIndex,
 		netboxdns_catalog.PluginName,
 	)
 }
