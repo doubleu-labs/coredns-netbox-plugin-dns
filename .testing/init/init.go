@@ -18,7 +18,7 @@ var (
 	hostApiRoot = "http://localhost:9999/api"
 	apiRoot     = hostApiRoot + "/plugins/netbox-dns"
 	token       string
-	execdir     string
+	testdataDir string
 )
 
 type tokenProvisionResponse struct {
@@ -35,7 +35,9 @@ func init() {
 	if !ok {
 		panic("unable to get current filename")
 	}
-	execdir = filepath.Dir(filename)
+	testdataDir = filepath.Clean(
+		filepath.Join(filepath.Dir(filename), "..", "..", "testdata"),
+	)
 }
 
 func closeBody(body io.ReadCloser) {
@@ -112,10 +114,10 @@ func post(client *http.Client, path string, filepath string) (string, []byte) {
 }
 
 func main() {
-	views := filepath.Join(execdir, "views.json")
-	nameservers := filepath.Join(execdir, "nameservers.json")
-	zones := filepath.Join(execdir, "zones.json")
-	records := filepath.Join(execdir, "records.json")
+	views := filepath.Join(testdataDir, "views.json")
+	nameservers := filepath.Join(testdataDir, "nameservers.json")
+	zones := filepath.Join(testdataDir, "zones.json")
+	records := filepath.Join(testdataDir, "records.json")
 	client := &http.Client{}
 
 	provisionToken(client)
