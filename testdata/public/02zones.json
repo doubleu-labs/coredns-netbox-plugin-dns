@@ -1,0 +1,164 @@
+[
+  {
+    "name": "example.com",
+    "description": "Public Zone",
+    "view": {
+      "name": "public"
+    },
+    "nameservers": [
+      {
+        "name": "ns1.example.com"
+      },
+      {
+        "name": "ns2.example.com"
+      }
+    ],
+    "default_ttl": 3600,
+    "soa_expire": 2419200,
+    "soa_minimum": 3600,
+    "soa_mname": {
+      "name": "ns1.example.com"
+    },
+    "soa_ttl": 86400,
+    "soa_refresh": 43200,
+    "soa_retry": 7200,
+    "soa_rname": "admin.example.com",
+    "soa_serial_auto": false,
+    "soa_serial": 1
+  },
+  {
+    "name": "1.0.10.in-addr.arpa",
+    "description": "Public IPv4 Reverse Zone",
+    "view": {
+      "name": "public"
+    },
+    "nameservers": [
+      {
+        "name": "ns1.example.com"
+      },
+      {
+        "name": "ns2.example.com"
+      }
+    ],
+    "default_ttl": 3600,
+    "soa_expire": 2419200,
+    "soa_minimum": 3600,
+    "soa_mname": {
+      "name": "ns1.example.com"
+    },
+    "soa_ttl": 86400,
+    "soa_refresh": 43200,
+    "soa_retry": 7200,
+    "soa_rname": "admin.example.com",
+    "soa_serial_auto": false,
+    "soa_serial": 1
+  },
+  {
+    "name": "1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa",
+    "description": "Public IPv6 Reverse Zone",
+    "view": {
+      "name": "public"
+    },
+    "nameservers": [
+      {
+        "name": "ns1.example.com"
+      },
+      {
+        "name": "ns2.example.com"
+      }
+    ],
+    "default_ttl": 3600,
+    "soa_expire": 2419200,
+    "soa_minimum": 3600,
+    "soa_mname": {
+      "name": "ns1.example.com"
+    },
+    "soa_ttl": 86400,
+    "soa_refresh": 43200,
+    "soa_retry": 7200,
+    "soa_rname": "admin.example.com",
+    "soa_serial_auto": false,
+    "soa_serial": 1
+  },
+  {
+    "name": "sub.example.com",
+    "description": "Public Sub Zone",
+    "view": {
+      "name": "public"
+    },
+    "nameservers": [
+      {
+        "name": "ns1.sub.example.com"
+      },
+      {
+        "name": "ns2.sub.example.com"
+      }
+    ],
+    "default_ttl": 3600,
+    "soa_expire": 2419200,
+    "soa_minimum": 3600,
+    "soa_mname": {
+      "name": "ns1.sub.example.com"
+    },
+    "soa_ttl": 86400,
+    "soa_refresh": 43200,
+    "soa_retry": 7200,
+    "soa_rname": "admin.example.com",
+    "soa_serial_auto": false,
+    "soa_serial": 1
+  },
+  {
+    "name": "10.0.10.in-addr.arpa",
+    "description": "Public Sub IPv4 Reverse Zone",
+    "view": {
+      "name": "public"
+    },
+    "nameservers": [
+      {
+        "name": "ns1.sub.example.com"
+      },
+      {
+        "name": "ns2.sub.example.com"
+      }
+    ],
+    "default_ttl": 3600,
+    "soa_expire": 2419200,
+    "soa_minimum": 3600,
+    "soa_mname": {
+      "name": "ns1.sub.example.com"
+    },
+    "soa_ttl": 86400,
+    "soa_refresh": 43200,
+    "soa_retry": 7200,
+    "soa_rname": "admin.example.com",
+    "soa_serial_auto": false,
+    "soa_serial": 1
+  },
+  {
+    "name": "0.1.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa",
+    "description": "Public Sub IPv6 Reverse Zone",
+    "view": {
+      "name": "public"
+    },
+    "nameservers": [
+      {
+        "name": "ns1.sub.example.com"
+      },
+      {
+        "name": "ns2.sub.example.com"
+      }
+    ],
+    "default_ttl": 3600,
+    "soa_expire": 2419200,
+    "soa_minimum": 3600,
+    "soa_mname": {
+      "name": "ns1.sub.example.com"
+    },
+    "soa_ttl": 86400,
+    "soa_refresh": 43200,
+    "soa_retry": 7200,
+    "soa_rname": "admin.example.com",
+    "soa_serial_auto": false,
+    "soa_serial": 1
+  }
+]

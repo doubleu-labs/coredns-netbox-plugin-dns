@@ -5,17 +5,18 @@ import (
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/plugin/pkg/log"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/core"
 )
 
 func Register() {
-	plugin.Register(PluginName, setup)
+	core.RegisterPlugin(pluginName, setup).Before("netboxdns")
 }
 
 func setup(c *caddy.Controller) error {
 	// TODO: implement
 
 	p := &netboxDNSCatalog{
-		logger: log.NewWithPlugin(PluginName),
+		logger: log.NewWithPlugin(pluginName),
 	}
 
 	dnsserver.GetConfig(c).AddPlugin(

@@ -6,12 +6,13 @@ import (
 	"sync"
 
 	"github.com/coredns/caddy"
+	"github.com/coredns/coredns/plugin/pkg/log"
 )
 
 // Token is the shape of a configuration token.
 type Token[T any] interface {
 	Parse(*caddy.Controller, *T) error
-	Validate(*caddy.Controller, *T) error
+	Validate(*caddy.Controller, log.P, *T) error
 }
 
 type tokenMapType[T any] map[string]Token[T]
@@ -19,7 +20,6 @@ type tokenMapType[T any] map[string]Token[T]
 // TokenMap associates a token name with a token struct.
 type TokenMap[T any] struct {
 	tokenMapType[T]
-	PluginName string
 }
 
 func (tm TokenMap[T]) tokens() string {
@@ -41,7 +41,6 @@ func (tm TokenMap[T]) tokens() string {
 func (tm TokenMap[T]) unknown(c *caddy.Controller, token string) error {
 	return c.Err(
 		ScopedMessage(
-			tm.PluginName,
 			"config",
 			fmt.Sprintf("unknown token %q; expected %s", token, tm.tokens()),
 		),
@@ -64,19 +63,19 @@ func tokenMapParse[T any](c *caddy.Controller, tm TokenMap[T], cfg *T) error {
 
 func tokenMapValidate[T any](
 	c *caddy.Controller,
+	l log.P,
 	tm TokenMap[T],
 	cfg *T,
 ) error {
 	for tokenName, token := range tm.tokenMapType {
-		if err := token.Validate(c, cfg); err != nil {
+		if err := token.Validate(c, l, cfg); err != nil {
 			return c.Err(
 				ScopedMessage(
-					tm.PluginName,
 					"config",
 					fmt.Sprintf(
 						"error validating token %q; %v",
 						tokenName,
-						err,
+						err.Error(),
 					),
 				),
 			)
@@ -91,13 +90,14 @@ func tokenMapValidate[T any](
 // required and is missing, empty, or zero.
 func ProcessTokens[T any](
 	c *caddy.Controller,
+	l log.P,
 	tm TokenMap[T],
 	cfg *T,
 ) error {
 	if err := tokenMapParse(c, tm, cfg); err != nil {
 		return err
 	}
-	if err := tokenMapValidate(c, tm, cfg); err != nil {
+	if err := tokenMapValidate(c, l, tm, cfg); err != nil {
 		return err
 	}
 	return nil
@@ -114,6 +114,8 @@ func RegisterToken[T any](
 		func() {
 			if tm == nil {
 				tm = new(TokenMap[T])
+			}
+			if tm.tokenMapType == nil {
 				tm.tokenMapType = make(tokenMapType[T])
 			}
 		},
@@ -123,10 +125,9 @@ func RegisterToken[T any](
 
 // ErrNoTokenValue returns an error indicating that a value is required for a
 // token but was not provided.
-func ErrNoTokenValue(c *caddy.Controller, pluginName, tokenName string) error {
+func ErrNoTokenValue(c *caddy.Controller, tokenName string) error {
 	return c.Err(
 		ScopedMessage(
-			pluginName,
 			"config",
 			fmt.Sprintf("no value for token %q provided", tokenName),
 		),
@@ -137,12 +138,11 @@ func ErrNoTokenValue(c *caddy.Controller, pluginName, tokenName string) error {
 // parsed.
 func ErrTokenParse(
 	c *caddy.Controller,
-	pluginName, tokenName string,
+	tokenName string,
 	err error,
 ) error {
 	return c.Err(
 		ScopedMessage(
-			pluginName,
 			"config",
 			fmt.Sprintf("error parsing token %q: %v", tokenName, err),
 		),

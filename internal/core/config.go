@@ -9,21 +9,19 @@ import (
 	"github.com/coredns/coredns/plugin"
 )
 
-type Config interface {
-	PluginName() string
-}
-
 // ValidateConfig validates plugin configuration.
 // Reflection is used to determine if a field is required and returns an error
 // if the field is missing, empty, or zero.
-func ValidateConfig[T Config](c *caddy.Controller, cfg *T) error {
+func ValidateConfig[T any](c *caddy.Controller, cfg *T) error {
 	cfgType := reflect.TypeOf(cfg).Elem()
 	cfgValue := reflect.ValueOf(cfg).Elem()
 
 	if cfgType.Kind() != reflect.Struct {
+		// this error should only be encountered during development.
+		// a properly constructed plugin configuration would use a struct for
+		// configuration.
 		return c.Err(
 			ScopedMessage(
-				(*cfg).PluginName(),
 				"config",
 				"config supplied is not a struct",
 			),
@@ -38,9 +36,11 @@ func ValidateConfig[T Config](c *caddy.Controller, cfg *T) error {
 		}
 		required, err := strconv.ParseBool(tagRequired)
 		if err != nil {
+			// this error should only be encountered during development.
+			// a properly constructed plugin configuration struct would not have
+			// this error.
 			return c.Err(
 				ScopedMessage(
-					(*cfg).PluginName(),
 					"config",
 					fmt.Sprintf(
 						"`required` tag on field %q is not a boolean",
@@ -53,7 +53,6 @@ func ValidateConfig[T Config](c *caddy.Controller, cfg *T) error {
 			tagName := field.Tag.Get("name")
 			return c.Err(
 				ScopedMessage(
-					(*cfg).PluginName(),
 					"config",
 					fmt.Sprintf(
 						"error validating token %q; token is required",

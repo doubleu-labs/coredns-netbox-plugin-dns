@@ -10,7 +10,7 @@ import (
 	"github.com/miekg/dns"
 )
 
-const PluginName = "netboxdns.catalog"
+const pluginName = "netboxdns.catalog"
 
 type netboxDNSCatalog struct {
 	Next   plugin.Handler
@@ -19,7 +19,7 @@ type netboxDNSCatalog struct {
 }
 
 func (*netboxDNSCatalog) Name() string {
-	return PluginName
+	return pluginName
 }
 
 func (n *netboxDNSCatalog) ServeDNS(
@@ -27,15 +27,12 @@ func (n *netboxDNSCatalog) ServeDNS(
 	w dns.ResponseWriter,
 	r *dns.Msg,
 ) (int, error) {
-	if n.client == nil && api.NetboxClient != nil {
-		n.client = api.NetboxClient
-	}
 	if n.client == nil {
 		return dns.RcodeServerFailure, plugin.Error(
-			PluginName,
+			pluginName,
 			errors.New("netbox client not initialized"),
 		)
 	}
 
-	return plugin.NextOrFailure(PluginName, n.Next, ctx, w, r)
+	return plugin.NextOrFailure(pluginName, n.Next, ctx, w, r)
 }

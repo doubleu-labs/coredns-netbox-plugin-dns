@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -68,7 +69,9 @@ func (r *Record) ToRR() (dns.RR, error) {
 	return rr, nil
 }
 
-// Records is a slice of multiple Record.
+// Records is a slice of Record used for methods that return multiple Record
+//
+//goland:noinspection GoUnnecessarilyExportedIdentifiers
 type Records []Record
 
 func (rs *Records) ToRRs() ([]dns.RR, error) {
@@ -91,40 +94,43 @@ type RecordQuery struct {
 	Zone        *Zone
 }
 
-func (rq *RecordQuery) encode() string {
-	out := url.Values{}
+func (rq *RecordQuery) encode(u *url.URL) string {
+	q := u.Query()
 
 	if rq.FQDN != "" {
-		out.Set("fqdn", rq.FQDN)
+		q.Set("fqdn", rq.FQDN)
 	}
 
 	if rq.Name != "" {
-		out.Set("name", rq.Name)
+		q.Set("name", rq.Name)
 	}
 
 	if len(rq.Type) > 0 {
 		for t := range slices.Values(rq.Type) {
-			out.Add("type", t)
+			q.Add("type", t)
 		}
 	}
 
 	if len(rq.TypeExclude) > 0 {
 		for t := range slices.Values(rq.TypeExclude) {
-			out.Add("type_exclude", t)
+			q.Add("type__n", t)
 		}
 	}
 
 	if rq.Zone != nil {
-		out.Set("zone_if", strconv.Itoa(rq.Zone.ID))
+		q.Set("zone_id", strconv.Itoa(rq.Zone.ID))
 	}
 
-	return out.Encode()
+	return q.Encode()
 }
 
-func (rq *RecordQuery) GetRecords(c *Client) (Records, error) {
+func (rq *RecordQuery) GetRecords(ctx context.Context, c *Client) (
+	Records,
+	error,
+) {
 	u := c.netboxURL.JoinPath("records", "/")
-	u.RawQuery = rq.encode()
-	rs, err := getMany[Record](c, u.String())
+	u.RawQuery = rq.encode(u)
+	rs, err := getMany[Record](ctx, c, u.String())
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +153,7 @@ func (rq *RecordQuery) GetRecords(c *Client) (Records, error) {
 		}
 		zoneURL := c.netboxURL.JoinPath("zones", strconv.Itoa(r.Zone.ID), "/")
 		var zoneErr error
-		zone, zoneErr := get[Zone](c, zoneURL.String())
+		zone, zoneErr := get[Zone](ctx, c, zoneURL.String())
 		if zoneErr != nil {
 			return rs, zoneErr
 		}

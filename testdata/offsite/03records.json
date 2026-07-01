@@ -1,0 +1,34 @@
+[
+  {
+    "zone": {
+      "name": "acme.example.com"
+    },
+    "type": "A",
+    "name": "ns1",
+    "value": "10.0.2.10"
+  },
+  {
+    "zone": {
+      "name": "acme.example.com"
+    },
+    "type": "AAAA",
+    "name": "ns1",
+    "value": "2001:db8:dead:beef::2:10"
+  },
+  {
+    "zone": {
+      "name": "acme.example.com"
+    },
+    "type": "A",
+    "name": "ns2",
+    "value": "10.0.2.11"
+  },
+  {
+    "zone": {
+      "name": "acme.example.com"
+    },
+    "type": "AAAA",
+    "name": "ns2",
+    "value": "2001:db8:dead:beef::2:11"
+  }
+]

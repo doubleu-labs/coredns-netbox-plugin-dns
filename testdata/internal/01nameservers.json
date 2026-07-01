@@ -1,0 +1,10 @@
+[
+  {
+    "name": "ns1.internal.example.com",
+    "description": "Internal Primary Nameserver"
+  },
+  {
+    "name": "ns2.internal.example.com",
+    "description": "Internal Secondary Nameserver"
+  }
+]

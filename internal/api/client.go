@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -10,7 +11,7 @@ import (
 )
 
 const (
-	defaultHTTPClientTimeout = 5 * time.Second
+	defaultHTTPClientTimeout = 2 * time.Second
 	defaultUserAgent         = "coredns-netbox-plugin-dns"
 
 	metricsFallbackEndpointLabel = "other"
@@ -32,6 +33,17 @@ func NewClient(token string, u *url.URL) *Client {
 		client: &http.Client{
 			Timeout: defaultHTTPClientTimeout,
 			Transport: &instrumentedTransport{
+				RoundTripper: &http.Transport{
+					MaxIdleConns:        100,
+					MaxIdleConnsPerHost: 100,
+					IdleConnTimeout:     90 * time.Second,
+					DialContext: (&net.Dialer{
+						Timeout:   500 * time.Millisecond,
+						KeepAlive: 30 * time.Second,
+					}).DialContext,
+					TLSHandshakeTimeout:   500 * time.Millisecond,
+					ResponseHeaderTimeout: 500 * time.Millisecond,
+				},
 				requestsDuration: newRequestDurationMetric(),
 				requestsTotal:    newRequestsTotalMetric(),
 			},
@@ -56,7 +68,9 @@ func (c *Client) Do(r *http.Request) (*http.Response, error) {
 
 // SetTLSConfig sets the TLS configuration to be used by the client.
 func (c *Client) SetTLSConfig(t *tls.Config) {
-	c.client.Transport.(*http.Transport).TLSClientConfig = t
+	ct := c.client.Transport.(*instrumentedTransport)
+	rt := ct.RoundTripper.(*http.Transport)
+	rt.TLSClientConfig = t
 }
 
 // SetUserAgent sets the User-Agent header to be used by the client.
@@ -82,7 +96,7 @@ func (it *instrumentedTransport) RoundTrip(r *http.Request) (
 ) {
 	label := it.endpointLabel(r.URL.Path)
 	metricStart := time.Now()
-	response, err := it.RoundTrip(r)
+	response, err := it.RoundTripper.RoundTrip(r)
 	it.requestsDuration.observe(label, time.Since(metricStart).Seconds())
 	if err != nil {
 		it.requestsTotal.incError(label)
@@ -93,10 +107,10 @@ func (it *instrumentedTransport) RoundTrip(r *http.Request) (
 }
 
 func (*instrumentedTransport) endpointLabel(uriPath string) string {
-	if !strings.HasPrefix(uriPath, "/"+apiPathString) {
+	if !strings.HasPrefix(uriPath, fmt.Sprintf("/%s", apiPathString)) {
 		return metricsFallbackEndpointLabel
 	}
-	remaining := strings.TrimPrefix(uriPath, "/"+apiPathString)
+	remaining := strings.TrimPrefix(uriPath, fmt.Sprintf("/%s", apiPathString))
 	if i := strings.IndexByte(remaining, '/'); i >= 0 {
 		remaining = remaining[:i]
 	}

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,9 +52,9 @@ func checkResp(r *http.Response) error {
 	return nil
 }
 
-func get[T any](c *Client, uri string) (T, error) {
+func get[T any](ctx context.Context, c *Client, uri string) (T, error) {
 	var out T
-	request, err := http.NewRequest("GET", uri, nil)
+	request, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
 	if err != nil {
 		return out, err
 	}
@@ -72,11 +73,11 @@ func get[T any](c *Client, uri string) (T, error) {
 	return out, nil
 }
 
-func getMany[T any](c *Client, uri string) ([]T, error) {
+func getMany[T any](ctx context.Context, c *Client, uri string) ([]T, error) {
 	var out []T
 	nextUri := uri
 	for nextUri != "" {
-		responses, err := get[manyResp[T]](c, nextUri)
+		responses, err := get[manyResp[T]](ctx, c, nextUri)
 		if err != nil {
 			return out, err
 		}
