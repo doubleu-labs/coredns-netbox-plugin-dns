@@ -28,7 +28,6 @@ type tViewPoller struct{}
 func (tViewPoller) Parse(c *caddy.Controller, cfg *Config) error {
 	if !c.NextArg() {
 		cfg.ViewPollerEnabled = true
-		cfg.ViewPollerDuration = 0
 		return nil
 	}
 	d, err := time.ParseDuration(c.Val())
