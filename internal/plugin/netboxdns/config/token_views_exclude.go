@@ -30,6 +30,7 @@ func (tViewsExclude) Parse(c *caddy.Controller, cfg *Config) error {
 	}
 	if len(cfg.ViewsExclude) != 0 {
 		cfg.ViewsExclude = append(cfg.ViewsExclude, args...)
+		return nil
 	}
 	cfg.ViewsExclude = args
 	return nil

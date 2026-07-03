@@ -30,6 +30,7 @@ func (tViews) Parse(c *caddy.Controller, cfg *Config) error {
 	}
 	if len(cfg.Views) != 0 {
 		cfg.Views = append(cfg.Views, args...)
+		return nil
 	}
 	cfg.Views = args
 	return nil
