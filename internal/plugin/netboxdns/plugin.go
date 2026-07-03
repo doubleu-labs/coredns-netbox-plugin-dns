@@ -19,6 +19,21 @@ import (
 
 const pluginName = "netboxdns"
 
+type serveRequest struct {
+	ctx    context.Context
+	w      dns.ResponseWriter
+	msg    *dns.Msg
+	qName  string
+	family int
+	qType  uint16
+}
+
+type serveResult struct {
+	handled bool
+	rcode   int
+	err     error
+}
+
 type netboxDNS struct {
 	Next plugin.Handler
 
@@ -43,87 +58,207 @@ func (n *netboxDNS) ServeDNS(
 	w dns.ResponseWriter,
 	r *dns.Msg,
 ) (int, error) {
-	s := request.Request{W: w, Req: r}
-	qName := s.QName()
-	family := s.Family()
-	qType := s.QType()
+	req := n.newServeRequest(ctx, w, r)
 
-	if n.noop {
-		if n.fall.Through(qName) {
-			n.logger.Debug(
-				core.ScopedMessage(
-					"serve",
-					fmt.Sprintf(
-						"`noop` enabled; forwarding request [%s] %q to "+
-							"next plugin",
-						dns.TypeToString[qType],
-						qName,
-					),
-				),
-			)
-			return plugin.NextOrFailure(pluginName, n.Next, ctx, w, r)
-		}
-		n.logger.Error(
-			core.ScopedMessage(
-				"serve",
-				"`noop` enabled but `fallthrough` not configured",
-			),
-		)
-		return dns.RcodeServerFailure, nil
+	if result := n.handleNoOp(req); result.handled {
+		return result.rcode, result.err
 	}
 
-	zone := plugin.Zones(n.zones).Matches(qName)
-	if zone == "" {
-		return plugin.NextOrFailure(pluginName, n.Next, ctx, w, r)
+	if !n.matchesZone(req.qName) {
+		return n.nextOrFailure(req)
 	}
 
-	lookupConfig := &lookup.Lookup{
-		Client: n.client,
-		Family: family,
-		Logger: &n.logger,
-		QName:  qName,
-		QType:  qType,
-		Views:  n.views,
+	if result := n.handleViewPollerDisabled(req); result.handled {
+		return result.rcode, result.err
 	}
-	response, err := lookupConfig.Run()
-	if err != nil {
-		return dns.RcodeServerFailure, err
+
+	response, result := n.runLookup(req)
+	if result.handled {
+		return result.rcode, result.err
 	}
-	if response == nil {
-		return dns.RcodeServerFailure, nil
+
+	if nameErrorResult := n.handleNameError(
+		req,
+		response,
+	); nameErrorResult.handled {
+		return nameErrorResult.rcode, nameErrorResult.err
 	}
-	if response.Result == lookup.NameError {
-		if n.fall.Through(qName) {
-			n.logger.Debug(
-				core.ScopedMessage(
-					"serve",
-					fmt.Sprintf(
-						"forwarding request [%s] %q to next plugin",
-						dns.TypeToString[qType],
-						qName,
-					),
-				),
-			)
-			return plugin.NextOrFailure(pluginName, n.Next, ctx, w, r)
-		}
+
+	return n.writeLookupResponse(req, response)
+}
+
+func (n *netboxDNS) newServeRequest(
+	ctx context.Context,
+	w dns.ResponseWriter,
+	msg *dns.Msg,
+) serveRequest {
+	s := request.Request{W: w, Req: msg}
+	return serveRequest{
+		ctx:    ctx,
+		w:      w,
+		msg:    msg,
+		qName:  s.QName(),
+		family: s.Family(),
+		qType:  s.QType(),
+	}
+}
+
+func (n *netboxDNS) handleNoOp(req serveRequest) serveResult {
+	if !n.noop {
+		return serveResult{}
+	}
+
+	if n.fall.Through(req.qName) {
 		n.logger.Debug(
 			core.ScopedMessage(
 				"serve",
 				fmt.Sprintf(
-					"no records for [%s] %q; fallthrough not enabled",
-					dns.TypeToString[qType],
-					qName,
+					"`noop` enabled; forwarding request [%s] %q to next plugin",
+					dns.TypeToString[req.qType],
+					req.qName,
 				),
 			),
 		)
+		rcode, err := n.nextOrFailure(req)
+		return serveResult{handled: true, rcode: rcode, err: err}
 	}
 
+	n.logger.Error(
+		core.ScopedMessage(
+			"serve",
+			"`noop` enabled but `fallthrough` not configured",
+		),
+	)
+	return serveResult{handled: true, rcode: dns.RcodeServerFailure}
+}
+
+func (n *netboxDNS) matchesZone(qName string) bool {
+	return plugin.Zones(n.zones).Matches(qName) != ""
+}
+
+func (n *netboxDNS) handleViewPollerDisabled(req serveRequest) serveResult {
+	if n.viewPoller == nil || n.viewPoller.CanResolve() {
+		return serveResult{}
+	}
+
+	if n.fall.Through(req.qName) {
+		n.logger.Debug(
+			core.ScopedMessage(
+				"serve",
+				fmt.Sprintf(
+					"netbox resolution disabled by view poller; "+
+						"forwarding request [%s] %q to next plugin",
+					dns.TypeToString[req.qType],
+					req.qName,
+				),
+			),
+		)
+		rcode, err := n.nextOrFailure(req)
+		return serveResult{handled: true, rcode: rcode, err: err}
+	}
+
+	n.logger.Error(
+		core.ScopedMessage(
+			"serve",
+			fmt.Sprintf(
+				"netbox resolution disabled by view poller for [%s] %q; "+
+					"fallthrough not enabled",
+				dns.TypeToString[req.qType],
+				req.qName,
+			),
+		),
+	)
+	return serveResult{handled: true, rcode: dns.RcodeServerFailure}
+}
+
+func (n *netboxDNS) lookupViews() *core.Views {
+	if n.viewPoller == nil {
+		return n.views
+	}
+	return new(n.viewPoller.Views())
+}
+
+func (n *netboxDNS) runLookup(req serveRequest) (
+	*lookup.Response,
+	serveResult,
+) {
+	lookupViews := n.lookupViews()
+
+	lookupConfig := &lookup.Lookup{
+		Client: n.client,
+		Family: req.family,
+		Logger: &n.logger,
+		QName:  req.qName,
+		QType:  req.qType,
+		Views:  lookupViews,
+	}
+
+	response, err := lookupConfig.Run()
+	if err != nil {
+		return nil, serveResult{
+			handled: true,
+			rcode:   dns.RcodeServerFailure,
+			err:     err,
+		}
+	}
+
+	if response == nil {
+		return nil, serveResult{
+			handled: true,
+			rcode:   dns.RcodeServerFailure,
+		}
+	}
+
+	return response, serveResult{}
+}
+
+func (n *netboxDNS) handleNameError(
+	req serveRequest,
+	response *lookup.Response,
+) serveResult {
+	if response.Result != lookup.NameError {
+		return serveResult{}
+	}
+
+	if n.fall.Through(req.qName) {
+		n.logger.Debug(
+			core.ScopedMessage(
+				"serve",
+				fmt.Sprintf(
+					"forwarding request [%s] %q to next plugin",
+					dns.TypeToString[req.qType],
+					req.qName,
+				),
+			),
+		)
+		rcode, err := n.nextOrFailure(req)
+		return serveResult{handled: true, rcode: rcode, err: err}
+	}
+
+	n.logger.Debug(
+		core.ScopedMessage(
+			"serve",
+			fmt.Sprintf(
+				"no records for [%s] %q; fallthrough not enabled",
+				dns.TypeToString[req.qType],
+				req.qName,
+			),
+		),
+	)
+
+	return serveResult{}
+}
+
+func (*netboxDNS) writeLookupResponse(
+	req serveRequest,
+	response *lookup.Response,
+) (int, error) {
 	responseMsg := &dns.Msg{
 		Answer: response.Answer,
 		Ns:     response.Ns,
 		Extra:  response.Extra,
 	}
-	responseMsg.SetReply(r)
+	responseMsg.SetReply(req.msg)
 	responseMsg.Authoritative = true
 
 	switch response.Result {
@@ -135,8 +270,19 @@ func (n *netboxDNS) ServeDNS(
 		responseMsg.Authoritative = false
 	}
 
-	if writeMsgErr := w.WriteMsg(responseMsg); writeMsgErr != nil {
-		return dns.RcodeServerFailure, writeMsgErr
+	if err := req.w.WriteMsg(responseMsg); err != nil {
+		return dns.RcodeServerFailure, err
 	}
+
 	return dns.RcodeSuccess, nil
+}
+
+func (n *netboxDNS) nextOrFailure(req serveRequest) (int, error) {
+	return plugin.NextOrFailure(
+		pluginName,
+		n.Next,
+		req.ctx,
+		req.w,
+		req.msg,
+	)
 }

@@ -77,13 +77,11 @@ func (ts *TestServer) closeServer(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to stop coredns instance: %v", err)
 	}
+	ts.instance.ShutdownCallbacks()
 }
 
-// NewTestServer creates a new TestServer using the provided contents of a
-// server block.
-func NewTestServer(t *testing.T, serverBlockContent string) *TestServer {
+func probeNetbox(t *testing.T) {
 	t.Helper()
-
 	netboxProbeOnce.Do(
 		func() {
 			conn, err := net.DialTimeout(
@@ -105,8 +103,16 @@ func NewTestServer(t *testing.T, serverBlockContent string) *TestServer {
 			netboxTestInstanceUriHost, netboxProbeErr,
 		)
 	}
+}
 
-	hostURL, hostToken := getTokenAndUrl(t)
+// NewTestServer creates a new TestServer using the provided contents of a
+// server block.
+func NewTestServer(t *testing.T, serverBlockContent string) *TestServer {
+	t.Helper()
+
+	probeNetbox(t)
+
+	hostURL, hostToken := GetTokenAndUrl(t)
 
 	serverBlockContent = serverBlockContentURLRegex.ReplaceAllString(
 		serverBlockContent,
@@ -147,7 +153,9 @@ func NewTestServer(t *testing.T, serverBlockContent string) *TestServer {
 	}
 }
 
-func getTokenAndUrl(t *testing.T) (string, string) {
+func GetTokenAndUrl(t *testing.T) (string, string) {
+	probeNetbox(t)
+
 	if netboxProbeErr != nil {
 		return "", ""
 	}

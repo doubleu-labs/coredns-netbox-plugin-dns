@@ -174,9 +174,6 @@ func (l *Lookup) explicitResponse(answerRRs, extraRRs []dns.RR) *Response {
 }
 
 func (l *Lookup) delegate(z *api.Zone, fqdn string) (*Response, error) {
-	if fqdn == z.Name {
-		return nil, nil
-	}
 	recordQuery := &api.RecordQuery{
 		FQDN: l.QName,
 		Type: []string{"NS"},

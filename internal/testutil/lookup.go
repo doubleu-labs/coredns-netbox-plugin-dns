@@ -52,7 +52,7 @@ func RunLookupTests(t *testing.T, tcs []LookupTestCase, s *TestServer) {
 						dns.RcodeToString[tc.Rcode],
 					)
 				}
-
+				t.Logf("response: %#v", resp)
 				if ok := RunLookupTestCheckCNAME(t, tc, resp); !ok {
 					return
 				}

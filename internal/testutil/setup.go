@@ -32,8 +32,7 @@ func newTestController(sb string, sbk []string) *caddy.Controller {
 	return c
 }
 
-func RunSetupTests(t *testing.T, tt []SetupTest, s SetupFunc, st *bool) {
-	*st = true
+func RunSetupTests(t *testing.T, tt []SetupTest, s SetupFunc) {
 	for test := range slices.Values(tt) {
 		t.Run(
 			test.Name,
