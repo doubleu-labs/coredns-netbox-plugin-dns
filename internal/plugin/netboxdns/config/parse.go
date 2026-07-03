@@ -8,10 +8,7 @@ import (
 )
 
 // Parse parses the plugin configuration.
-func Parse(c *caddy.Controller, l log.P) (
-	*Config,
-	error,
-) {
+func Parse(c *caddy.Controller, l log.P) (*Config, error) {
 	out := new(Config)
 	var i int
 	for c.Next() {
@@ -22,12 +19,7 @@ func Parse(c *caddy.Controller, l log.P) (
 
 		out.Zones = core.ParseZones(c)
 
-		if err := core.ProcessTokens(
-			c,
-			l,
-			tokens,
-			out,
-		); err != nil {
+		if err := core.ProcessTokens(c, l, tokens, out); err != nil {
 			return out, err
 		}
 	}
