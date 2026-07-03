@@ -28,7 +28,7 @@ func (tViews) Parse(c *caddy.Controller, cfg *Config) error {
 	if len(args) == 0 {
 		return core.ErrNoTokenValue(c, tViewsName)
 	}
-	if cfg.Views != nil {
+	if len(cfg.Views) != 0 {
 		cfg.Views = append(cfg.Views, args...)
 	}
 	cfg.Views = args

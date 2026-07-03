@@ -28,7 +28,7 @@ func (tViewsExclude) Parse(c *caddy.Controller, cfg *Config) error {
 	if len(args) == 0 {
 		return core.ErrNoTokenValue(c, tViewsExcludeName)
 	}
-	if cfg.ViewsExclude != nil {
+	if len(cfg.ViewsExclude) != 0 {
 		cfg.ViewsExclude = append(cfg.ViewsExclude, args...)
 	}
 	cfg.ViewsExclude = args
