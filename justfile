@@ -17,7 +17,7 @@ instance-stop: _ensure-podman-sock
     podman compose {{_compose-common}} down --volumes
 
 test: instance-start
-    rm coverage.out
+    rm -f coverage.out
     go clean -testcache
     go test \
         -covermode=atomic \
