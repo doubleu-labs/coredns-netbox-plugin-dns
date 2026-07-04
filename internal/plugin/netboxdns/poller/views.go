@@ -6,23 +6,19 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/api"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/core"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/poller"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var defaultViewPollerInterval = 30 * time.Second
 
 type ViewPoller struct {
-	cancel   context.CancelFunc
-	client   *api.Client
-	interval time.Duration
-	mu       sync.Mutex
-	running  bool
-	wg       sync.WaitGroup
+	*poller.Poller
+	client *api.Client
 
 	configuredViews core.Views
 	runtimeViews    core.Views
@@ -35,7 +31,6 @@ type ViewPoller struct {
 
 	pollerCyclesMetric   *prometheus.CounterVec
 	pollerDurationMetric prometheus.Histogram
-	pollerErrorsMetric   *prometheus.CounterVec
 }
 
 func NewViewPoller(c *api.Client, v *core.Views, i time.Duration) (
@@ -53,113 +48,58 @@ func NewViewPoller(c *api.Client, v *core.Views, i time.Duration) (
 		interval = defaultViewPollerInterval
 	}
 	vp := &ViewPoller{
+		Poller: &poller.Poller{
+			ErrorMetric: newViewPollerErrorsMetric(),
+			Interval:    interval,
+		},
 		client:               c,
 		configuredViews:      cloneViews(*v),
-		interval:             interval,
 		runtimeViews:         cloneViews(*v),
 		canResolve:           true,
 		pollerCyclesMetric:   newViewPollerCyclesTotalMetric(),
 		pollerDurationMetric: newViewPollerPollDurationMetric(),
-		pollerErrorsMetric:   newViewPollerErrorsMetric(),
 	}
+	vp.Poller.PollFunc = vp.poll
 	return vp, nil
 }
 
-func (vp *ViewPoller) Start() {
-	vp.mu.Lock()
-	if vp.running {
-		vp.mu.Unlock()
-		return
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	vp.cancel = cancel
-	vp.running = true
-	vp.wg.Add(1)
-	vp.mu.Unlock()
-
-	go func() {
-		defer vp.wg.Done()
-
-		ticker := time.NewTicker(vp.interval)
-		defer ticker.Stop()
-
-		if err := vp.poll(ctx, time.Now()); err != nil && !errors.Is(
-			err,
-			context.Canceled,
-		) {
-			vp.pollerErrorsMetric.WithLabelValues("start").Inc()
-		}
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case t := <-ticker.C:
-				if err := vp.poll(ctx, t); err != nil && !errors.Is(
-					err,
-					context.Canceled,
-				) {
-					vp.pollerErrorsMetric.WithLabelValues("poll").Inc()
-				}
-			}
-		}
-	}()
-}
-
-func (vp *ViewPoller) Stop() {
-	vp.mu.Lock()
-	if !vp.running {
-		vp.mu.Unlock()
-		return
-	}
-
-	cancel := vp.cancel
-	vp.cancel = nil
-	vp.running = false
-	vp.mu.Unlock()
-
-	cancel()
-	vp.wg.Wait()
-}
-
 func (vp *ViewPoller) CanResolve() bool {
-	vp.mu.Lock()
-	defer vp.mu.Unlock()
+	vp.Poller.Mu.Lock()
+	defer vp.Poller.Mu.Unlock()
 	return vp.canResolve
 }
 
 func (vp *ViewPoller) Views() core.Views {
-	vp.mu.Lock()
-	defer vp.mu.Unlock()
+	vp.Poller.Mu.Lock()
+	defer vp.Poller.Mu.Unlock()
 	return cloneViews(vp.runtimeViews)
 }
 
 func (vp *ViewPoller) SetCanResolveForTest(canResolve bool) {
-	vp.mu.Lock()
-	defer vp.mu.Unlock()
+	vp.Poller.Mu.Lock()
+	defer vp.Poller.Mu.Unlock()
 	vp.canResolve = canResolve
 }
 
 func (vp *ViewPoller) lastErr() error {
-	vp.mu.Lock()
-	defer vp.mu.Unlock()
+	vp.Poller.Mu.Lock()
+	defer vp.Poller.Mu.Unlock()
 	return vp.lastError
 }
 
 func (vp *ViewPoller) missingInclude() []string {
-	vp.mu.Lock()
-	defer vp.mu.Unlock()
+	vp.Poller.Mu.Lock()
+	defer vp.Poller.Mu.Unlock()
 	return slices.Clone(vp.missingIncludeSlice)
 }
 
 func (vp *ViewPoller) missingExclude() []string {
-	vp.mu.Lock()
-	defer vp.mu.Unlock()
+	vp.Poller.Mu.Lock()
+	defer vp.Poller.Mu.Unlock()
 	return slices.Clone(vp.missingExcludeSlice)
 }
 
-func (vp *ViewPoller) poll(ctx context.Context, _ time.Time) error {
+func (vp *ViewPoller) poll(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -189,7 +129,7 @@ func (vp *ViewPoller) poll(ctx context.Context, _ time.Time) error {
 
 	runtime, mInclude, mExclude, canResolve := vp.validate(serverViews)
 
-	vp.mu.Lock()
+	vp.Poller.Mu.Lock()
 	vp.runtimeViews = runtime
 	vp.missingIncludeSlice = mInclude
 	vp.missingExcludeSlice = mExclude
@@ -206,7 +146,7 @@ func (vp *ViewPoller) poll(ctx context.Context, _ time.Time) error {
 	}
 
 	err = vp.lastError
-	vp.mu.Unlock()
+	vp.Poller.Mu.Unlock()
 
 	return err
 }
@@ -217,9 +157,9 @@ func (vp *ViewPoller) validate(serverViews map[string]struct{}) (
 	[]string,
 	bool,
 ) {
-	vp.mu.Lock()
+	vp.Poller.Mu.Lock()
 	configured := cloneViews(vp.configuredViews)
-	vp.mu.Unlock()
+	vp.Poller.Mu.Unlock()
 
 	runtime := core.Views{
 		Include: existingViews(configured.Include, serverViews),
@@ -238,8 +178,8 @@ func (vp *ViewPoller) validate(serverViews map[string]struct{}) (
 }
 
 func (vp *ViewPoller) setLastErr(err error) {
-	vp.mu.Lock()
-	defer vp.mu.Unlock()
+	vp.Poller.Mu.Lock()
+	defer vp.Poller.Mu.Unlock()
 	vp.lastError = err
 }
 
