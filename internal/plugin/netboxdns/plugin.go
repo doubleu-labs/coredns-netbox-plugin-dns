@@ -21,14 +21,15 @@ const pluginName = "netboxdns"
 type netboxDNS struct {
 	Next plugin.Handler
 
-	client      *api.Client
-	fall        fall.F
-	logger      log.P
-	noop        bool
-	serverState *iplugin.ServerContext
-	viewPoller  *poller.ViewPoller
-	views       *core.Views
-	zones       []string
+	activeZoneStatus []string
+	client           *api.Client
+	fall             fall.F
+	logger           log.P
+	noop             bool
+	serverState      *iplugin.ServerContext
+	viewPoller       *poller.ViewPoller
+	views            *core.Views
+	zones            []string
 }
 
 // Name implements the plugin.Handler interface.
@@ -163,12 +164,13 @@ func (n *netboxDNS) runLookup(req core.ServeRequest) (
 	lookupViews := n.lookupViews()
 
 	lookupConfig := &lookup.Lookup{
-		Client: n.client,
-		Family: req.Family(),
-		Logger: &n.logger,
-		QName:  req.QName(),
-		QType:  req.QType(),
-		Views:  lookupViews,
+		ActiveZoneStatus: n.activeZoneStatus,
+		Client:           n.client,
+		Family:           req.Family(),
+		Logger:           &n.logger,
+		QName:            req.QName(),
+		QType:            req.QType(),
+		Views:            lookupViews,
 	}
 
 	response, err := lookupConfig.Run()

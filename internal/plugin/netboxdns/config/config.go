@@ -10,6 +10,7 @@ import (
 
 // Config represents the configuration for the NetboxDNS plugin.
 type Config struct {
+	ActiveZoneStatus   []string      `name:"active_zone_status"`
 	Fall               *fall.F       `name:"fallthrough"`
 	NetboxURL          *url.URL      `name:"url" required:"true"`
 	NoOp               bool          `name:"noop"`

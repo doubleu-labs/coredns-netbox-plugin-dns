@@ -54,14 +54,15 @@ func (z *Zone) ToRR() ([]dns.RR, error) {
 
 // ZoneQuery represents parameters used for querying zones from the NetBox API.
 type ZoneQuery struct {
-	Views *core.Views
+	ActiveZoneStatus []string
+	Views            *core.Views
 }
 
-func (zq *ZoneQuery) encode(c *Client, u *url.URL) string {
+func (zq *ZoneQuery) encode(_ *Client, u *url.URL) string {
 	q := u.Query()
 
-	for statue := range slices.Values(c.activeStatus) {
-		q.Add("status", statue)
+	for status := range slices.Values(zq.ActiveZoneStatus) {
+		q.Add("status", status)
 	}
 
 	for vi := range slices.Values(zq.Views.Include) {

@@ -22,7 +22,6 @@ type Client struct {
 	token        *token
 	netboxURL    *url.URL
 	userAgent    string
-	activeStatus []string
 	viewsInclude []string
 	viewsExclude []string
 }

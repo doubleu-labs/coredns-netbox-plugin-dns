@@ -11,7 +11,8 @@ import (
 
 func (l *Lookup) matchZone(n string) (*api.Zone, error) {
 	zoneQuery := &api.ZoneQuery{
-		Views: l.Views,
+		ActiveZoneStatus: l.ActiveZoneStatus,
+		Views:            l.Views,
 	}
 	ctx, cancel := context.WithTimeout(
 		context.Background(),

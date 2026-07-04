@@ -16,12 +16,13 @@ import (
 // Lookup contains the parameters of a request that will be used to lookup
 // records in Netbox.
 type Lookup struct {
-	Client *api.Client
-	Family int
-	Logger *log.P
-	QName  string
-	QType  uint16
-	Views  *core.Views
+	ActiveZoneStatus []string
+	Client           *api.Client
+	Family           int
+	Logger           *log.P
+	QName            string
+	QType            uint16
+	Views            *core.Views
 }
 
 func (l *Lookup) debug(msg string) {

@@ -48,12 +48,13 @@ func setup(c *caddy.Controller) error {
 	}
 
 	netboxdns := &netboxDNS{
-		client:      ctx.APIClient,
-		logger:      logger,
-		noop:        cfg.NoOp,
-		serverState: ctx,
-		views:       views,
-		zones:       cfg.Zones,
+		activeZoneStatus: cfg.ActiveZoneStatus,
+		client:           ctx.APIClient,
+		logger:           logger,
+		noop:             cfg.NoOp,
+		serverState:      ctx,
+		views:            views,
+		zones:            cfg.Zones,
 	}
 
 	if len(views.Include) > 0 || len(views.Exclude) > 0 {

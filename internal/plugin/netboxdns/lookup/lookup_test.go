@@ -93,12 +93,13 @@ func Test_Lookup(t *testing.T) {
 	}
 
 	lookup := &Lookup{
-		Client: client,
-		Family: 1,
-		Logger: new(log.NewWithPlugin("test-lookup")),
-		QName:  "example.com.",
-		QType:  dns.TypeA,
-		Views:  &core.Views{},
+		ActiveZoneStatus: []string{"active", "dynamic"},
+		Client:           client,
+		Family:           1,
+		Logger:           new(log.NewWithPlugin("test-lookup")),
+		QName:            "example.com.",
+		QType:            dns.TypeA,
+		Views:            &core.Views{},
 	}
 
 	for test := range slices.Values(tests) {
