@@ -72,3 +72,7 @@ func ServeNextOrFailure(
 		req.msg,
 	)
 }
+
+func MatchesZone(zones []string, qname string) bool {
+	return plugin.Zones(zones).Matches(qname) != ""
+}

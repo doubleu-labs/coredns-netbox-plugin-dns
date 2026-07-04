@@ -52,7 +52,7 @@ func (n *netboxDNS) ServeDNS(
 		return result.Rcode, result.Err
 	}
 
-	if !n.matchesZone(req.QName()) {
+	if !core.MatchesZone(n.zones, req.QName()) {
 		return core.ServeNextOrFailure(pluginName, n.Next, req)
 	}
 
@@ -102,10 +102,6 @@ func (n *netboxDNS) handleNoOp(req core.ServeRequest) core.ServeResult {
 		),
 	)
 	return core.ServeResult{Handled: true, Rcode: dns.RcodeServerFailure}
-}
-
-func (n *netboxDNS) matchesZone(qName string) bool {
-	return plugin.Zones(n.zones).Matches(qName) != ""
 }
 
 func (n *netboxDNS) handleZoneTransfer(req core.ServeRequest) core.ServeResult {
