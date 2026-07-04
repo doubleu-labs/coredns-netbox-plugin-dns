@@ -33,6 +33,8 @@ func (p *Poller) Start() {
 	p.running = true
 	p.wg.Add(1)
 	p.Mu.Unlock()
+
+	go p.runLoop()
 }
 
 func (p *Poller) Stop() {
