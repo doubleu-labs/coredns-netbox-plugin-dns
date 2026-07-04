@@ -89,8 +89,8 @@ func Test_NewViewPollerUsesDefaultInterval(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new view poller: %v", err)
 	}
-	if vp.interval != defaultViewPollerInterval {
-		t.Fatalf("expected default interval; got %v", vp.interval)
+	if vp.Poller.Interval != defaultViewPollerInterval {
+		t.Fatalf("expected default interval; got %v", vp.Poller.Interval)
 	}
 }
 
@@ -113,7 +113,7 @@ func Test_ViewPollerRemovesMissingIncludeViews(t *testing.T) {
 		t.Fatalf("new view poller: %v", err)
 	}
 
-	if pollErr := vp.poll(context.Background(), time.Now()); pollErr != nil {
+	if pollErr := vp.poll(context.Background()); pollErr != nil {
 		t.Fatalf("poll error: %v", pollErr)
 	}
 
@@ -160,7 +160,7 @@ func Test_ViewPollerDisablesWhenNoIncludeViewsRemain(t *testing.T) {
 		t.Fatalf("new view poller: %v", err)
 	}
 
-	if pollErr := vp.poll(context.Background(), time.Now()); pollErr == nil {
+	if pollErr := vp.poll(context.Background()); pollErr == nil {
 		t.Fatalf("poll error: %v", pollErr)
 	}
 
@@ -206,7 +206,7 @@ func Test_ViewPollerRemoveMissingExcludeViewsWithoutDisable(t *testing.T) {
 		t.Fatalf("new view poller: %v", err)
 	}
 
-	if pollErr := vp.poll(context.Background(), time.Now()); pollErr != nil {
+	if pollErr := vp.poll(context.Background()); pollErr != nil {
 		t.Fatalf("poll error: %v", pollErr)
 	}
 
@@ -261,13 +261,13 @@ func Test_ViewPollerKeepPreviousStateOnAPIError(t *testing.T) {
 		t.Fatalf("new view poller: %v", err)
 	}
 
-	if pollErr := vp.poll(context.Background(), time.Now()); pollErr != nil {
+	if pollErr := vp.poll(context.Background()); pollErr != nil {
 		t.Fatalf("initial poll error: %v", pollErr)
 	}
 
 	status = http.StatusInternalServerError
 
-	if pollErr := vp.poll(context.Background(), time.Now()); pollErr == nil {
+	if pollErr := vp.poll(context.Background()); pollErr == nil {
 		t.Fatal("second poll error is nil; want err")
 	}
 
@@ -307,7 +307,7 @@ func Test_ViewPollerReturnsClone(t *testing.T) {
 		t.Fatalf("new view poller: %v", err)
 	}
 
-	if pollErr := vp.poll(context.Background(), time.Now()); pollErr != nil {
+	if pollErr := vp.poll(context.Background()); pollErr != nil {
 		t.Fatalf("poll error: %v", pollErr)
 	}
 
