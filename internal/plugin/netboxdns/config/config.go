@@ -11,6 +11,7 @@ import (
 // Config represents the configuration for the NetboxDNS plugin.
 type Config struct {
 	ActiveZoneStatus   []string      `name:"active_zone_status"`
+	CacheHistory       int           `name:"cache_history"`
 	Fall               *fall.F       `name:"fallthrough"`
 	NetboxURL          *url.URL      `name:"url" required:"true"`
 	NoOp               bool          `name:"noop"`
@@ -21,5 +22,7 @@ type Config struct {
 	ViewsExclude       []string      `name:"views_exclude"`
 	ViewPollerDuration time.Duration `name:"view_poller"`
 	ViewPollerEnabled  bool
+	ZonePollerDuration time.Duration `name:"zone_poller"`
+	ZonePollerEnabled  bool
 	Zones              []string
 }
