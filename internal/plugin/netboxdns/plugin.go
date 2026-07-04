@@ -48,6 +48,10 @@ func (n *netboxDNS) ServeDNS(
 		return result.Rcode, result.Err
 	}
 
+	if result := n.handleZoneTransfer(req); result.Handled {
+		return result.Rcode, result.Err
+	}
+
 	if !n.matchesZone(req.QName()) {
 		return core.ServeNextOrFailure(pluginName, n.Next, req)
 	}
@@ -102,6 +106,14 @@ func (n *netboxDNS) handleNoOp(req core.ServeRequest) core.ServeResult {
 
 func (n *netboxDNS) matchesZone(qName string) bool {
 	return plugin.Zones(n.zones).Matches(qName) != ""
+}
+
+func (n *netboxDNS) handleZoneTransfer(req core.ServeRequest) core.ServeResult {
+	if req.QType() == dns.TypeAXFR || req.QType() == dns.TypeIXFR {
+		rcode, err := core.ServeNextOrFailure(pluginName, n.Next, req)
+		return core.ServeResult{Handled: true, Rcode: rcode, Err: err}
+	}
+	return core.ServeResult{}
 }
 
 func (n *netboxDNS) handleViewPollerDisabled(
