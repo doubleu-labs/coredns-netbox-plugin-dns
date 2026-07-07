@@ -58,7 +58,7 @@ func get[T any](ctx context.Context, c *Client, uri string) (T, error) {
 	if err != nil {
 		return out, err
 	}
-	response, err := c.Do(request)
+	response, err := c.Do(ctx, request)
 	if err != nil {
 		return out, err
 	}

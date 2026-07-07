@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -56,13 +58,45 @@ func NewClient(token string, u *url.URL) *Client {
 // Do executes an HTTP request against the Netbox API.
 // `Authorization` and `User-Agent` headers are set automatically. Existing
 // values are not modified.
-func (c *Client) Do(r *http.Request) (*http.Response, error) {
+func (c *Client) Do(ctx context.Context, r *http.Request) (
+	*http.Response,
+	error,
+) {
 	r.Header.Set(
 		"Authorization",
 		fmt.Sprintf("Token %s", c.token.raw),
 	)
 	r.Header.Set("User-Agent", c.userAgent)
-	return c.client.Do(r)
+
+	var resp *http.Response
+	var err error
+	maxRetries := 3
+	baseDelay := 500 * time.Millisecond
+	for i := 0; i < maxRetries; i++ {
+		if ctxErr := ctx.Err(); err != nil {
+			return nil, ctxErr
+		}
+		attemptReq := r.WithContext(ctx)
+		resp, err = c.client.Do(attemptReq)
+		if err == nil && resp.StatusCode < 500 {
+			return resp, nil
+		}
+		if resp != nil {
+			if closeErr := resp.Body.Close(); closeErr != nil {
+				return nil, closeErr
+			}
+		}
+		delay := baseDelay * (1 << i)
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed after %d retries: %w", maxRetries, err)
+	}
+	return nil, errors.New("failed after max retries with server error")
 }
 
 // SetTLSConfig sets the TLS configuration to be used by the client.
