@@ -203,7 +203,8 @@ func setupCache(c *caddy.Controller, n *netboxDNS, cfg *config.Config) error {
 	n.zonePoller = zonePoller
 
 	if isTransferTest {
-		if pollErr := n.zonePoller.PollFunc(context.Background()); pollErr != nil {
+		pollErr := n.zonePoller.PollFunc(context.Background())
+		if pollErr != nil {
 			return pollErr
 		}
 	}
