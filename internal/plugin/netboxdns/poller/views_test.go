@@ -10,7 +10,7 @@ import (
 
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/api"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/core"
-	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/testutil"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/testutil/mock"
 )
 
 func Test_NewViewPollerRejectsNilClient(t *testing.T) {
@@ -93,7 +93,7 @@ func Test_ViewPollerPollReturnsCanceledContextError(t *testing.T) {
 }
 
 func Test_ViewPollerRemovesMissingIncludeViews(t *testing.T) {
-	client, closeServer := testutil.NewPollerMockClient(
+	client, closeServer := mock.NewPollerClient(
 		t,
 		[]api.View{
 			{
@@ -140,7 +140,7 @@ func Test_ViewPollerRemovesMissingIncludeViews(t *testing.T) {
 }
 
 func Test_ViewPollerDisablesWhenNoIncludeViewsRemain(t *testing.T) {
-	client, closeServer := testutil.NewPollerMockClient(
+	client, closeServer := mock.NewPollerClient(
 		t,
 		[]api.View{
 			{
@@ -186,7 +186,7 @@ func Test_ViewPollerDisablesWhenNoIncludeViewsRemain(t *testing.T) {
 }
 
 func Test_ViewPollerRemoveMissingExcludeViewsWithoutDisable(t *testing.T) {
-	client, closeServer := testutil.NewPollerMockClient(
+	client, closeServer := mock.NewPollerClient(
 		t,
 		[]api.View{
 			{
@@ -234,12 +234,12 @@ func Test_ViewPollerRemoveMissingExcludeViewsWithoutDisable(t *testing.T) {
 
 func Test_ViewPollerKeepPreviousStateOnAPIError(t *testing.T) {
 	status := http.StatusOK
-	client, closeServer := testutil.PollerMockHandler(
+	client, closeServer := mock.PollerHandler(
 		t,
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(status)
 			if status == http.StatusOK {
-				testutil.WritePoller(
+				mock.WritePoller(
 					t,
 					w,
 					[]api.View{
@@ -289,7 +289,7 @@ func Test_ViewPollerKeepPreviousStateOnAPIError(t *testing.T) {
 }
 
 func Test_ViewPollerReturnsClone(t *testing.T) {
-	client, closeServer := testutil.NewPollerMockClient(
+	client, closeServer := mock.NewPollerClient(
 		t,
 		[]api.View{
 			{
@@ -325,7 +325,7 @@ func Test_ViewPollerReturnsClone(t *testing.T) {
 }
 
 func Test_ViewPollerStartAlreadyStarted(t *testing.T) {
-	client, closeServer := testutil.NewPollerMockClient(
+	client, closeServer := mock.NewPollerClient(
 		t,
 		[]api.View{
 			{
@@ -348,7 +348,7 @@ func Test_ViewPollerStartAlreadyStarted(t *testing.T) {
 }
 
 func Test_ViewPollerStopAlreadyStopped(t *testing.T) {
-	client, closeServer := testutil.NewPollerMockClient(
+	client, closeServer := mock.NewPollerClient(
 		t,
 		[]api.View{
 			{
@@ -371,7 +371,7 @@ func Test_ViewPollerStopAlreadyStopped(t *testing.T) {
 }
 
 func Test_ViewPollerStartStop(t *testing.T) {
-	client, closeServer := testutil.NewPollerMockClient(
+	client, closeServer := mock.NewPollerClient(
 		t,
 		[]api.View{
 			{

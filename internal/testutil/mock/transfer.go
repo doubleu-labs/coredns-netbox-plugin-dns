@@ -1,11 +1,11 @@
-package testutil
+package mock
 
 import (
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/api"
 	"github.com/miekg/dns"
 )
 
-type MockTransferCache struct {
+type TransferCache struct {
 	Ch        <-chan []dns.RR
 	Err       error
 	GotZone   string
@@ -13,7 +13,7 @@ type MockTransferCache struct {
 	Called    bool
 }
 
-func (m *MockTransferCache) Transfer(
+func (m *TransferCache) Transfer(
 	zone string,
 	serial uint32,
 ) (<-chan []dns.RR, error) {
@@ -23,14 +23,14 @@ func (m *MockTransferCache) Transfer(
 	return m.Ch, m.Err
 }
 
-func (m *MockTransferCache) GetZoneNames() []string {
+func (m *TransferCache) GetZoneNames() []string {
 	return nil
 }
 
-func (m *MockTransferCache) Put(_ *api.Zone, _ *dns.SOA, _ []dns.RR) {
+func (m *TransferCache) Put(_ *api.Zone, _ *dns.SOA, _ []dns.RR) {
 	return
 }
 
-func (m *MockTransferCache) Size() int {
+func (m *TransferCache) Size() int {
 	return 0
 }

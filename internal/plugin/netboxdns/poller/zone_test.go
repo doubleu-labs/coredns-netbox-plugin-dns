@@ -12,7 +12,7 @@ import (
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/api"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/cache"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/core"
-	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/testutil"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/testutil/mock"
 	"github.com/miekg/dns"
 )
 
@@ -154,7 +154,7 @@ func Test_ZonePollerPollReturnsCanceledContextError(t *testing.T) {
 }
 
 func Test_ZonePollerReturnsZoneAPIError(t *testing.T) {
-	client, closeServer := testutil.PollerMockHandler(
+	client, closeServer := mock.PollerHandler(
 		t,
 		func(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, "server error", http.StatusInternalServerError)
@@ -185,12 +185,12 @@ func Test_ZonePollerReturnsZoneAPIError(t *testing.T) {
 func Test_ZonePollerStoresFetchedZoneRecordsInCache(t *testing.T) {
 	ttl := uint32(300)
 
-	client, closeServer := testutil.PollerMockHandler(
+	client, closeServer := mock.PollerHandler(
 		t,
 		func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
 			case "/zones/":
-				testutil.WritePoller(
+				mock.WritePoller(
 					t,
 					w,
 					[]api.Zone{
@@ -214,7 +214,7 @@ func Test_ZonePollerStoresFetchedZoneRecordsInCache(t *testing.T) {
 					},
 				)
 			case "/records/":
-				testutil.WritePoller(
+				mock.WritePoller(
 					t,
 					w,
 					[]api.Record{
@@ -297,12 +297,12 @@ func Test_ZonePollerStoresFetchedZoneRecordsInCache(t *testing.T) {
 func Test_ZonePollerSynthesizesSOAMNameFromFirstNSRecord(t *testing.T) {
 	ttl := uint32(300)
 
-	client, closeServer := testutil.PollerMockHandler(
+	client, closeServer := mock.PollerHandler(
 		t,
 		func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
 			case "/zones/":
-				testutil.WritePoller(
+				mock.WritePoller(
 					t,
 					w,
 					[]api.Zone{
@@ -321,7 +321,7 @@ func Test_ZonePollerSynthesizesSOAMNameFromFirstNSRecord(t *testing.T) {
 					},
 				)
 			case "/records/":
-				testutil.WritePoller(
+				mock.WritePoller(
 					t,
 					w,
 					[]api.Record{
@@ -391,12 +391,12 @@ func Test_ZonePollerSynthesizesSOAMNameFromFirstNSRecord(t *testing.T) {
 func Test_ZonePollerSynthesizeSOAWithoutMNameWhenNoNSRecordExist(t *testing.T) {
 	ttl := uint32(300)
 
-	client, closeServer := testutil.PollerMockHandler(
+	client, closeServer := mock.PollerHandler(
 		t,
 		func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
 			case "/zones/":
-				testutil.WritePoller(
+				mock.WritePoller(
 					t,
 					w,
 					[]api.Zone{
@@ -415,7 +415,7 @@ func Test_ZonePollerSynthesizeSOAWithoutMNameWhenNoNSRecordExist(t *testing.T) {
 					},
 				)
 			case "/records/":
-				testutil.WritePoller(
+				mock.WritePoller(
 					t,
 					w,
 					[]api.Record{
@@ -479,12 +479,12 @@ func Test_ZonePollerSynthesizeSOAWithoutMNameWhenNoNSRecordExist(t *testing.T) {
 func Test_ZonePollerContinuesWhenRecordFetchFails(t *testing.T) {
 	ttl := uint32(300)
 
-	client, closeServer := testutil.PollerMockHandler(
+	client, closeServer := mock.PollerHandler(
 		t,
 		func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
 			case "/zones/":
-				testutil.WritePoller(
+				mock.WritePoller(
 					t,
 					w,
 					[]api.Zone{
@@ -545,12 +545,12 @@ func Test_ZonePollerContinuesWhenRecordFetchFails(t *testing.T) {
 func Test_ZonePollerCachesMultipleZones(t *testing.T) {
 	ttl := uint32(300)
 
-	client, closeServer := testutil.PollerMockHandler(
+	client, closeServer := mock.PollerHandler(
 		t,
 		func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
 			case "/zones/":
-				testutil.WritePoller(
+				mock.WritePoller(
 					t,
 					w,
 					[]api.Zone{
@@ -583,7 +583,7 @@ func Test_ZonePollerCachesMultipleZones(t *testing.T) {
 			case "/records/":
 				switch r.URL.Query().Get("zone_id") {
 				case "1":
-					testutil.WritePoller(
+					mock.WritePoller(
 						t,
 						w,
 						[]api.Record{
@@ -596,7 +596,7 @@ func Test_ZonePollerCachesMultipleZones(t *testing.T) {
 						},
 					)
 				case "2":
-					testutil.WritePoller(
+					mock.WritePoller(
 						t,
 						w,
 						[]api.Record{
@@ -655,7 +655,7 @@ func Test_ZonePollerCachesMultipleZones(t *testing.T) {
 func Test_ZonePollerPassesStatusViewsAndRecordFilters(t *testing.T) {
 	ttl := uint32(300)
 
-	client, closeServer := testutil.PollerMockHandler(
+	client, closeServer := mock.PollerHandler(
 		t,
 		func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
@@ -687,7 +687,7 @@ func Test_ZonePollerPassesStatusViewsAndRecordFilters(t *testing.T) {
 					)
 				}
 
-				testutil.WritePoller(
+				mock.WritePoller(
 					t,
 					w,
 					[]api.Zone{
@@ -720,7 +720,7 @@ func Test_ZonePollerPassesStatusViewsAndRecordFilters(t *testing.T) {
 					)
 				}
 
-				testutil.WritePoller[api.Record](t, w, nil)
+				mock.WritePoller[api.Record](t, w, nil)
 			default:
 				http.NotFound(w, r)
 			}
@@ -756,12 +756,12 @@ func Test_ZonePollerPassesStatusViewsAndRecordFilters(t *testing.T) {
 func Test_ZonePollerContinuesWhenRecordsCannotConvertToRRs(t *testing.T) {
 	ttl := uint32(300)
 
-	client, closeServer := testutil.PollerMockHandler(
+	client, closeServer := mock.PollerHandler(
 		t,
 		func(w http.ResponseWriter, r *http.Request) {
 			switch r.URL.Path {
 			case "/zones/":
-				testutil.WritePoller(
+				mock.WritePoller(
 					t,
 					w,
 					[]api.Zone{
@@ -780,7 +780,7 @@ func Test_ZonePollerContinuesWhenRecordsCannotConvertToRRs(t *testing.T) {
 					},
 				)
 			case "/records/":
-				testutil.WritePoller(
+				mock.WritePoller(
 					t,
 					w,
 					[]api.Record{

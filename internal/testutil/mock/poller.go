@@ -1,4 +1,4 @@
-package testutil
+package mock
 
 import (
 	"encoding/json"
@@ -10,12 +10,12 @@ import (
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/api"
 )
 
-func NewPollerMockClient[T any](t *testing.T, results []T) (
+func NewPollerClient[T any](t *testing.T, results []T) (
 	*api.Client,
 	func(),
 ) {
 	t.Helper()
-	return PollerMockHandler(
+	return PollerHandler(
 		t,
 		func(w http.ResponseWriter, _ *http.Request) {
 			WritePoller(t, w, results)
@@ -23,7 +23,7 @@ func NewPollerMockClient[T any](t *testing.T, results []T) (
 	)
 }
 
-func PollerMockHandler(t *testing.T, handler http.HandlerFunc) (
+func PollerHandler(t *testing.T, handler http.HandlerFunc) (
 	*api.Client,
 	func(),
 ) {

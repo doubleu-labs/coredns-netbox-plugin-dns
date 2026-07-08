@@ -6,7 +6,7 @@ import (
 
 	"github.com/coredns/coredns/plugin/transfer"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/cache"
-	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/testutil"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/testutil/mock"
 	"github.com/miekg/dns"
 )
 
@@ -14,7 +14,7 @@ func TestMockTransfer_AXFRDelegatesToZoneCache(t *testing.T) {
 	wantCh := make(chan []dns.RR)
 	close(wantCh)
 
-	mockCache := &testutil.MockTransferCache{
+	mockCache := &mock.TransferCache{
 		Ch: wantCh,
 	}
 	n := &netboxDNS{
@@ -43,7 +43,7 @@ func TestMockTransfer_IXFRDelegatesToZoneCache(t *testing.T) {
 	wantCh := make(chan []dns.RR)
 	close(wantCh)
 
-	mockCache := &testutil.MockTransferCache{
+	mockCache := &mock.TransferCache{
 		Ch: wantCh,
 	}
 	n := &netboxDNS{
@@ -85,7 +85,7 @@ func TestMockTransfer_NilCacheIsNotAuthoritative(t *testing.T) {
 }
 
 func TestMockTransfer_ZoneNotFoundIsNotAuthoritative(t *testing.T) {
-	mockCache := &testutil.MockTransferCache{
+	mockCache := &mock.TransferCache{
 		Err: cache.ErrZoneNotFound,
 	}
 	n := &netboxDNS{
@@ -107,7 +107,7 @@ func TestMockTransfer_ZoneNotFoundIsNotAuthoritative(t *testing.T) {
 
 func TestMockTransfer_PropagateUnexpectedCacheError(t *testing.T) {
 	wantErr := errors.New("cache failed")
-	mockCache := &testutil.MockTransferCache{
+	mockCache := &mock.TransferCache{
 		Err: wantErr,
 	}
 	n := &netboxDNS{
