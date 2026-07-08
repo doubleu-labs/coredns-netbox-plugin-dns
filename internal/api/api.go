@@ -1,6 +1,7 @@
 package api
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -41,45 +42,70 @@ func closeBody(c io.Closer, err *error, msg string) {
 	}
 }
 
-func checkResp(r *http.Response) error {
+func checkResp(r *http.Response) (err error) {
 	if r.StatusCode != http.StatusOK {
-		return fmt.Errorf(
+		err = fmt.Errorf(
 			"request error [%d] %q",
 			r.StatusCode,
 			r.Status,
 		)
 	}
-	return nil
+	return
 }
 
-func get[T any](ctx context.Context, c *Client, uri string) (T, error) {
-	var out T
-	request, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
-	if err != nil {
-		return out, err
+func getReader(r *http.Response) (rc io.ReadCloser, err error) {
+	if r.Header.Get("Content-Encoding") == "gzip" {
+		reader, readerErr := gzip.NewReader(r.Body)
+		if readerErr != nil {
+			err = fmt.Errorf("could not create gzip reader: %w", readerErr)
+			return
+		}
+		rc = reader
+		return
 	}
-	response, err := c.Do(ctx, request)
-	if err != nil {
-		return out, err
+	rc = r.Body
+	return
+}
+
+func get[T any](ctx context.Context, c *Client, uri string) (out T, err error) {
+	request, reqErr := http.NewRequestWithContext(ctx, "GET", uri, nil)
+	if reqErr != nil {
+		err = reqErr
+		return
+	}
+	response, respErr := c.Do(request)
+	if respErr != nil {
+		err = respErr
+		return
 	}
 	defer closeBody(response.Body, &err, "closing response body")
 	if rerr := checkResp(response); rerr != nil {
-		return out, rerr
+		err = rerr
+		return
 	}
-	decoder := json.NewDecoder(response.Body)
+	reader, readErr := getReader(response)
+	if readErr != nil {
+		err = readErr
+		return
+	}
+	decoder := json.NewDecoder(reader)
 	if decodeErr := decoder.Decode(&out); decodeErr != nil {
-		return out, fmt.Errorf("could not decode response: %w", decodeErr)
+		err = fmt.Errorf("could not decode response: %w", decodeErr)
+		return
 	}
-	return out, nil
+	return
 }
 
-func getMany[T any](ctx context.Context, c *Client, uri string) ([]T, error) {
-	var out []T
+func getMany[T any](ctx context.Context, c *Client, uri string) (
+	out []T,
+	err error,
+) {
 	nextUri := uri
 	for nextUri != "" {
-		responses, err := get[manyResp[T]](ctx, c, nextUri)
-		if err != nil {
-			return out, err
+		responses, getErr := get[manyResp[T]](ctx, c, nextUri)
+		if getErr != nil {
+			err = getErr
+			return
 		}
 		if out == nil {
 			out = make([]T, 0, responses.Count)
@@ -87,5 +113,5 @@ func getMany[T any](ctx context.Context, c *Client, uri string) ([]T, error) {
 		out = slices.Concat(out, responses.Results)
 		nextUri = responses.Next
 	}
-	return out, nil
+	return
 }

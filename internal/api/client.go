@@ -1,9 +1,7 @@
 package api
 
 import (
-	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -29,22 +27,35 @@ type Client struct {
 }
 
 // NewClient returns a new Netbox API client
-func NewClient(token string, u *url.URL) *Client {
-	return &Client{
+func NewClient(token string, u *url.URL) (c *Client) {
+	transport := &http.Transport{
+		// connection pool
+		MaxConnsPerHost:     100,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+		// timeouts
+		ExpectContinueTimeout: 1 * time.Second,
+		IdleConnTimeout:       30 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+		// connection settings
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		// enable http2
+		ForceAttemptHTTP2: true,
+		// large buffer
+		ReadBufferSize:  64 * 1024,
+		WriteBufferSize: 64 * 1024,
+		// compression
+		DisableCompression: false,
+	}
+	c = &Client{
 		client: &http.Client{
 			Timeout: defaultHTTPClientTimeout,
 			Transport: &instrumentedTransport{
-				RoundTripper: &http.Transport{
-					MaxIdleConns:        100,
-					MaxIdleConnsPerHost: 100,
-					IdleConnTimeout:     90 * time.Second,
-					DialContext: (&net.Dialer{
-						Timeout:   500 * time.Millisecond,
-						KeepAlive: 30 * time.Second,
-					}).DialContext,
-					TLSHandshakeTimeout:   500 * time.Millisecond,
-					ResponseHeaderTimeout: 500 * time.Millisecond,
-				},
+				RoundTripper:     transport,
 				requestsDuration: newRequestDurationMetric(),
 				requestsTotal:    newRequestsTotalMetric(),
 			},
@@ -53,50 +64,21 @@ func NewClient(token string, u *url.URL) *Client {
 		token:     newToken(token),
 		userAgent: defaultUserAgent,
 	}
+	return
 }
 
 // Do executes an HTTP request against the Netbox API.
 // `Authorization` and `User-Agent` headers are set automatically. Existing
 // values are not modified.
-func (c *Client) Do(ctx context.Context, r *http.Request) (
-	*http.Response,
-	error,
+func (c *Client) Do(r *http.Request) (
+	resp *http.Response,
+	err error,
 ) {
-	r.Header.Set(
-		"Authorization",
-		fmt.Sprintf("Token %s", c.token.raw),
-	)
+	r.Header.Set("Authorization", fmt.Sprintf("Token %s", c.token.raw))
 	r.Header.Set("User-Agent", c.userAgent)
-
-	var resp *http.Response
-	var err error
-	maxRetries := 3
-	baseDelay := 500 * time.Millisecond
-	for i := 0; i < maxRetries; i++ {
-		if ctxErr := ctx.Err(); err != nil {
-			return nil, ctxErr
-		}
-		attemptReq := r.WithContext(ctx)
-		resp, err = c.client.Do(attemptReq)
-		if err == nil && resp.StatusCode < 500 {
-			return resp, nil
-		}
-		if resp != nil {
-			if closeErr := resp.Body.Close(); closeErr != nil {
-				return nil, closeErr
-			}
-		}
-		delay := baseDelay * (1 << i)
-		select {
-		case <-time.After(delay):
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed after %d retries: %w", maxRetries, err)
-	}
-	return nil, errors.New("failed after max retries with server error")
+	r.Header.Set("Accept-Encoding", "gzip")
+	resp, err = c.client.Do(r)
+	return
 }
 
 // SetTLSConfig sets the TLS configuration to be used by the client.
@@ -124,19 +106,20 @@ type instrumentedTransport struct {
 
 // RoundTrip implements the http.RoundTripper interface.
 func (it *instrumentedTransport) RoundTrip(r *http.Request) (
-	*http.Response,
-	error,
+	resp *http.Response,
+	err error,
 ) {
 	label := it.endpointLabel(r.URL.Path)
 	metricStart := time.Now()
-	response, err := it.RoundTripper.RoundTrip(r)
+	resp, err = it.RoundTripper.RoundTrip(r)
 	it.requestsDuration.observe(label, time.Since(metricStart).Seconds())
 	if err != nil {
 		it.requestsTotal.incError(label)
-		return response, err
 	}
-	it.requestsTotal.incStatusCode(label, response.StatusCode)
-	return response, nil
+	if resp != nil {
+		it.requestsTotal.incStatusCode(label, resp.StatusCode)
+	}
+	return
 }
 
 func (*instrumentedTransport) endpointLabel(uriPath string) string {
