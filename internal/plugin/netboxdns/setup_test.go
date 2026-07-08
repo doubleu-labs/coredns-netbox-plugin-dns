@@ -9,16 +9,19 @@ import (
 )
 
 type testConfig struct {
-	Fall         string
-	NetboxURL    string
-	NoOp         string
-	Timeout      string
-	TLS          string
-	Token        string
-	Views        string
-	ViewsExclude string
-	ViewPoller   string
-	Zones        string
+	ActiveZoneStatus string
+	CacheHistory     string
+	Fall             string
+	NetboxURL        string
+	NoOp             string
+	Timeout          string
+	TLS              string
+	Token            string
+	Views            string
+	ViewsExclude     string
+	ViewPoller       string
+	ZonePoller       string
+	Zones            string
 }
 
 func newTestConfig() *testConfig {
@@ -33,6 +36,10 @@ func newValidTestConfig() *testConfig {
 
 func (c *testConfig) set(k, v string) *testConfig {
 	switch k {
+	case "active_zone_status":
+		c.ActiveZoneStatus = v
+	case "cache_history":
+		c.CacheHistory = v
 	case "fallthrough":
 		c.Fall = v
 	case "url":
@@ -51,6 +58,8 @@ func (c *testConfig) set(k, v string) *testConfig {
 		c.ViewsExclude = v
 	case "view_poller":
 		c.ViewPoller = v
+	case "zone_poller":
+		c.ZonePoller = v
 	case "zones":
 		c.Zones = v
 	default:
@@ -69,6 +78,20 @@ func (c *testConfig) format() string {
 		out += fmt.Sprintf("%s ", c.Zones)
 	}
 	out += "{\n"
+
+	if str, ok := c.formatTokenWithArguments(
+		"active_zone_status",
+		c.ActiveZoneStatus,
+	); ok {
+		out += str
+	}
+
+	if str, ok := c.formatTokenWithArguments(
+		"cache_history",
+		c.CacheHistory,
+	); ok {
+		out += str
+	}
 
 	if str, ok := c.formatTokenWithArguments("fallthrough", c.Fall); ok {
 		out += str
@@ -109,14 +132,18 @@ func (c *testConfig) format() string {
 		out += str
 	}
 
+	if str, ok := c.formatTokenWithArguments("zone_poller", c.ZonePoller); ok {
+		out += str
+	}
+
 	out += "}"
 	return out
 }
 
-func (c *testConfig) formatTokenWithArguments(
-	token string,
-	value string,
-) (string, bool) {
+func (c *testConfig) formatTokenWithArguments(token, value string) (
+	string,
+	bool,
+) {
 	var out string
 	if value == "{TRUE}" {
 		out = fmt.Sprintf("\t%s\n", token)
@@ -333,6 +360,58 @@ func Test_SetupBasic(t *testing.T) {
 			Name: "view poller valid duration",
 			ServerBlock: newValidTestConfig().
 				set("view_poller", "10s").
+				format(),
+		},
+		{
+			Name: "active zone status no value",
+			ServerBlock: newValidTestConfig().
+				set("active_zone_status", "{TRUE}").
+				format(),
+			WantErr: true,
+		},
+		{
+			Name: "active zone status",
+			ServerBlock: newValidTestConfig().
+				set("active_zone_status", "active dynamic catalog").
+				format(),
+		},
+		{
+			Name: "cache history no value",
+			ServerBlock: newValidTestConfig().
+				set("cache_history", "{TRUE}").
+				format(),
+			WantErr: true,
+		},
+		{
+			Name: "cache history invalid value",
+			ServerBlock: newValidTestConfig().
+				set("cache_history", "invalid").
+				format(),
+			WantErr: true,
+		},
+		{
+			Name: "cache history",
+			ServerBlock: newValidTestConfig().
+				set("cache_history", "10").
+				format(),
+		},
+		{
+			Name: "zone poller no duration",
+			ServerBlock: newValidTestConfig().
+				set("zone_poller", "{TRUE}").
+				format(),
+		},
+		{
+			Name: "zone poller invalid duration",
+			ServerBlock: newValidTestConfig().
+				set("zone_poller", "100g").
+				format(),
+			WantErr: true,
+		},
+		{
+			Name: "zone poller",
+			ServerBlock: newValidTestConfig().
+				set("zone_poller", "10m").
 				format(),
 		},
 	}
