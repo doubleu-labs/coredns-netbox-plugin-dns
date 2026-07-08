@@ -85,9 +85,7 @@ func (zp *ZonePoller) poll(ctx context.Context) error {
 	defer func() {
 		zp.pollerDurationMetric.Observe(time.Since(start).Seconds())
 	}()
-	zoneCtx, zoneCancel := context.WithTimeout(ctx, 500*time.Millisecond)
-	defer zoneCancel()
-	zones, err := zq.GetZones(zoneCtx, zp.client)
+	zones, err := zq.GetZones(ctx, zp.client)
 	if err != nil {
 		zp.pollerCyclesMetric.WithLabelValues("error").Inc()
 		return err
@@ -96,7 +94,7 @@ func (zp *ZonePoller) poll(ctx context.Context) error {
 
 	for i := range zones {
 		zone := &zones[i]
-		records, recordsErr := zp.getRecordsForZone(zoneCtx, zone)
+		records, recordsErr := zp.getRecordsForZone(ctx, zone)
 		if recordsErr != nil {
 			zp.logger.Errorf(
 				"%s; %v",
@@ -154,7 +152,5 @@ func (zp *ZonePoller) getRecordsForZone(
 		TypeExclude: []string{"SOA"},
 		Zone:        zone,
 	}
-	recordCtx, recordCancel := context.WithTimeout(ctx, 500*time.Millisecond)
-	defer recordCancel()
-	return rq.GetRecords(recordCtx, zp.client)
+	return rq.GetRecords(ctx, zp.client)
 }
