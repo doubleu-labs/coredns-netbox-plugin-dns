@@ -103,6 +103,7 @@ func (c *Cache) Put(zone *api.Zone, soa *dns.SOA, rrs []dns.RR) {
 			currentZone:   rrs,
 			soa:           soa,
 		}
+		zCache = c.zones[normalizedZone]
 	}
 
 	if zCache.currentSerial == zone.SOASerial {

@@ -10,7 +10,6 @@ import (
 	"github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/plugin/transfer"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/api"
-	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/cache"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/core"
 	iplugin "github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/plugin"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/plugin/netboxdns/lookup"
@@ -32,7 +31,7 @@ type netboxDNS struct {
 	viewPoller       *poller.ViewPoller
 	views            *core.Views
 	xfer             *transfer.Transfer
-	zoneCache        *cache.Cache
+	zoneCache        zoneTransferCache
 	zonePoller       *poller.ZonePoller
 	zones            []string
 }

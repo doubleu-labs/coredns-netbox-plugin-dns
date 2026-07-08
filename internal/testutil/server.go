@@ -3,12 +3,14 @@ package testutil
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -43,41 +45,31 @@ func (t *token) String() string {
 
 // TestServer is a local ephemeral CoreDNS server for testing.
 type TestServer struct {
-	addr       string
-	instance   *caddy.Instance
-	clientConn net.Conn
-	serverConn net.Conn
+	addr     string
+	instance *caddy.Instance
 }
 
 // Send sends a DNS message to the server and returns the response.
 func (ts *TestServer) Send(m *dns.Msg) (r *dns.Msg, err error) {
 	dnsClient := new(dns.Client)
-	r, _, err = dnsClient.Exchange(m, ts.addr)
+	addr := net.JoinHostPort("127.0.0.1", ts.addr)
+	r, _, err = dnsClient.Exchange(m, addr)
 	return
 }
 
+func (ts *TestServer) Transfer(m *dns.Msg) (chan *dns.Envelope, error) {
+	client := new(dns.Transfer)
+	addr := net.JoinHostPort("127.0.0.1", ts.addr)
+	return client.In(m, addr)
+}
+
 func (ts *TestServer) Close(t *testing.T) {
-	ts.closeServer(t)
-	go ts.closeConn(t, ts.clientConn)
-	go ts.closeConn(t, ts.serverConn)
-}
-
-func (ts *TestServer) closeConn(t *testing.T, conn net.Conn) {
-	if conn == nil {
-		return
-	}
-	err := conn.Close()
-	if err != nil {
-		t.Errorf("Failed to close connection: %v", err)
-	}
-}
-
-func (ts *TestServer) closeServer(t *testing.T) {
 	err := ts.instance.Stop()
 	if err != nil {
 		t.Errorf("Failed to stop coredns instance: %v", err)
 	}
 	ts.instance.ShutdownCallbacks()
+	ts.instance.Wait()
 }
 
 func probeNetbox(t *testing.T) {
@@ -123,34 +115,104 @@ func NewTestServer(t *testing.T, serverBlockContent string) *TestServer {
 		hostToken,
 	)
 
-	corefile := fmt.Sprintf(
-		`.:0 {
-	%s
-	}`, serverBlockContent,
-	)
-
 	testServer := new(TestServer)
-	testServer.serverConn, testServer.clientConn = net.Pipe()
 
-	serverInstance, err := caddy.Start(
-		caddy.CaddyfileInput{
-			ServerTypeName: "dns",
-			Contents:       []byte(corefile),
-		},
+	serverInstance, addr := startOnSharedDynamicPort(t, serverBlockContent)
+
+	testServer.addr = addr
+	testServer.instance = serverInstance
+
+	return testServer
+}
+
+func startOnSharedDynamicPort(t *testing.T, serverBlockContents string) (
+	*caddy.Instance,
+	string,
+) {
+	t.Helper()
+	const maxAttempts = 20
+	var lastErr error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		addr := reserveSharedAddr(t)
+		corefile := fmt.Sprintf(".:%s {\n\t%s\n}", addr, serverBlockContents)
+		serverInstance, err := caddy.Start(
+			caddy.CaddyfileInput{
+				ServerTypeName: "dns",
+				Contents:       []byte(corefile),
+			},
+		)
+		if err != nil {
+			lastErr = err
+			if isAddrInUseErr(err) {
+				continue
+			}
+			t.Fatalf("failed to start server instance: %v", err)
+		}
+		servers := serverInstance.Servers()
+		if len(servers) == 0 {
+			_ = serverInstance.Stop()
+			serverInstance.ShutdownCallbacks()
+			t.Fatal("no servers started")
+		}
+		return serverInstance, addr
+	}
+	t.Fatalf(
+		"failed to start server instance on a shared tcp/udp test port after "+
+			"%d attempts: %v",
+		maxAttempts,
+		lastErr,
 	)
+	return nil, ""
+}
+
+func reserveSharedAddr(t *testing.T) string {
+	t.Helper()
+	tcpListener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		t.Fatalf("Failed to start coredns instance: %v", err)
+		t.Fatalf("failed to reserve test tcp port: %v", err)
 	}
+	defer func() {
+		if closeErr := tcpListener.Close(); closeErr != nil {
+			t.Fatalf("failed to close test tcp listener: %v", closeErr)
+		}
+	}()
+	tcpAddr, ok := tcpListener.Addr().(*net.TCPAddr)
+	if !ok {
+		t.Fatalf("failed to get TCP address from listener")
+	}
+	udpAddr := &net.UDPAddr{
+		IP:   tcpAddr.IP,
+		Port: tcpAddr.Port,
+	}
+	udpConn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		t.Fatalf(
+			"failed to reserve matching test udp port %d: %v",
+			udpAddr.Port,
+			err,
+		)
+	}
+	defer func() {
+		if closeErr := udpConn.Close(); closeErr != nil {
+			t.Fatalf("failed to close test udp listener: %v", closeErr)
+		}
+	}()
+	return fmt.Sprintf("%d", tcpAddr.Port)
+}
 
-	servers := serverInstance.Servers()
-	if len(servers) == 0 {
-		t.Fatalf("No servers started")
+func isAddrInUseErr(err error) bool {
+	for err != nil {
+		if opErr := new(net.OpError); errors.As(err, &opErr) {
+			if strings.Contains(opErr.Err.Error(), "address already in use") {
+				return true
+			}
+		}
+		if strings.Contains(err.Error(), "address already in use") {
+			return true
+		}
+		err = errors.Unwrap(err)
 	}
-
-	return &TestServer{
-		addr:     servers[0].LocalAddr().String(),
-		instance: serverInstance,
-	}
+	return false
 }
 
 func GetTokenAndUrl(t *testing.T) (string, string) {
@@ -180,11 +242,11 @@ func GetTokenAndUrl(t *testing.T) (string, string) {
 	if err != nil {
 		t.Fatal("provision api token:", err.Error())
 	}
-	var token token
-	decoderErr := json.NewDecoder(response.Body).Decode(&token)
+	var apiToken token
+	decoderErr := json.NewDecoder(response.Body).Decode(&apiToken)
 	if decoderErr != nil {
 		t.Fatal("provision api token:", decoderErr.Error())
 	}
 	hostURL.Path = ""
-	return hostURL.String(), token.String()
+	return hostURL.String(), apiToken.String()
 }

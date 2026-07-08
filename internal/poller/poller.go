@@ -29,12 +29,14 @@ func (p *Poller) Start() {
 		return
 	}
 
-	p.ctx, p.cancel = context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	p.cancel = cancel
+	p.ctx = ctx
 	p.running = true
 	p.wg.Add(1)
 	p.Mu.Unlock()
 
-	go p.runLoop()
+	go p.runLoop(ctx)
 }
 
 func (p *Poller) Stop() {
@@ -53,29 +55,28 @@ func (p *Poller) Stop() {
 	p.wg.Wait()
 }
 
-func (p *Poller) runLoop() {
+func (p *Poller) runLoop(ctx context.Context) {
 	defer p.wg.Done()
 
 	ticker := time.NewTicker(p.Interval)
 	defer ticker.Stop()
 
-	p.runPoll("start")
+	p.runPoll(ctx, "start")
 
 	for {
 		select {
 		case <-p.ctx.Done():
 			return
 		case <-ticker.C:
-			p.runPoll("poll")
+			p.runPoll(ctx, "poll")
 		}
 	}
 }
 
-func (p *Poller) runPoll(whenLabel string) {
-	if err := p.PollFunc(p.ctx); err != nil && !errors.Is(
-		err,
-		context.Canceled,
-	) {
+func (p *Poller) runPoll(ctx context.Context, whenLabel string) {
+	if err := p.PollFunc(ctx); err != nil &&
+		!errors.Is(err, context.Canceled) &&
+		!errors.Is(err, context.DeadlineExceeded) {
 		p.ErrorMetric.WithLabelValues(whenLabel).Inc()
 	}
 }

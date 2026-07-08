@@ -2,6 +2,7 @@ package netboxdns
 
 // noinspection LongLine
 import (
+	"context"
 	"fmt"
 	"slices"
 
@@ -21,6 +22,7 @@ import (
 var (
 	isSetupTest    bool
 	isTestRegister bool
+	isTransferTest bool
 )
 
 const defaultCacheHistory = 16
@@ -189,7 +191,7 @@ func setupCache(c *caddy.Controller, n *netboxDNS, cfg *config.Config) error {
 
 	zonePoller, zonePollerErr := poller.NewZonePoller(
 		n.client,
-		n.zoneCache,
+		n.zoneCache.(*cache.Cache),
 		n.views,
 		n.activeZoneStatus,
 		&n.logger,
@@ -199,6 +201,12 @@ func setupCache(c *caddy.Controller, n *netboxDNS, cfg *config.Config) error {
 		return zonePollerErr
 	}
 	n.zonePoller = zonePoller
+
+	if isTransferTest {
+		if pollErr := n.zonePoller.PollFunc(context.Background()); pollErr != nil {
+			return pollErr
+		}
+	}
 
 	c.OnStartup(
 		func() error {
