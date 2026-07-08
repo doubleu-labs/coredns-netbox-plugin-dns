@@ -2,90 +2,41 @@ package poller
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
 	"slices"
 	"testing"
 	"time"
 
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/api"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/core"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/testutil"
 )
 
-func newViewPollerMockClient(t *testing.T, v []api.View) (*api.Client, func()) {
-	t.Helper()
-	return viewPollerMockHandler(
-		t,
-		func(w http.ResponseWriter, _ *http.Request) {
-			writeViewPollerViews(t, w, v)
-		},
-	)
-}
-
-func viewPollerMockHandler(t *testing.T, handler http.HandlerFunc) (
-	*api.Client,
-	func(),
-) {
-	t.Helper()
-	server := httptest.NewServer(handler)
-	serverURL, err := url.Parse(server.URL)
-	if err != nil {
-		server.Close()
-		t.Fatalf("parse server URL: %v", err)
-	}
-	client := api.NewClient("", serverURL)
-	return client, server.Close
-}
-
-func writeViewPollerViews(
-	t *testing.T,
-	w http.ResponseWriter,
-	views []api.View,
-) {
-	t.Helper()
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(
-		struct {
-			Count    int        `json:"count"`
-			Next     string     `json:"next"`
-			Previous string     `json:"previous"`
-			Results  []api.View `json:"results"`
-		}{
-			Count:   len(views),
-			Results: views,
-		},
-	); err != nil {
-		t.Fatalf("encode views response: %v", err)
-	}
-}
-
 func Test_NewViewPollerRejectsNilClient(t *testing.T) {
-	views := &core.Views{
-		Include: []string{"internal"},
-	}
+	views := new(core.Views)
+	interval := time.Second
 
-	if _, err := NewViewPoller(nil, views, time.Second); err == nil {
+	if _, err := NewViewPoller(nil, views, interval); err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func Test_NewViewPollerRejectsNilViews(t *testing.T) {
-	client := &api.Client{}
+	client := new(api.Client)
+	interval := time.Second
 
-	if _, err := NewViewPoller(client, nil, time.Second); err == nil {
+	if _, err := NewViewPoller(client, nil, interval); err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func Test_NewViewPollerUsesDefaultInterval(t *testing.T) {
-	client := &api.Client{}
+	client := new(api.Client)
+	views := new(core.Views)
+	interval := 0 * time.Second
 
-	views := &core.Views{
-		Include: []string{"internal"},
-	}
-	vp, err := NewViewPoller(client, views, 0)
+	vp, err := NewViewPoller(client, views, interval)
 	if err != nil {
 		t.Fatalf("new view poller: %v", err)
 	}
@@ -94,8 +45,55 @@ func Test_NewViewPollerUsesDefaultInterval(t *testing.T) {
 	}
 }
 
+func Test_NewViewPollerUsesExplicitInterval(t *testing.T) {
+	client := new(api.Client)
+	views := new(core.Views)
+	interval := 5 * time.Second
+
+	vp, err := NewViewPoller(client, views, interval)
+	if err != nil {
+		t.Fatalf("new view poller: %v", err)
+	}
+	if vp.Poller.Interval != interval {
+		t.Fatalf("interval; want %v; got %v", interval, vp.Poller.Interval)
+	}
+}
+
+func Test_NewViewPollerSetsPollFunc(t *testing.T) {
+	client := new(api.Client)
+	views := new(core.Views)
+	interval := time.Second
+
+	vp, err := NewViewPoller(client, views, interval)
+	if err != nil {
+		t.Fatalf("new view poller: %v", err)
+	}
+	if vp.Poller.PollFunc == nil {
+		t.Fatalf("expected poll func to be set")
+	}
+}
+
+func Test_ViewPollerPollReturnsCanceledContextError(t *testing.T) {
+	client := new(api.Client)
+	views := new(core.Views)
+	interval := time.Second
+
+	vp, err := NewViewPoller(client, views, interval)
+	if err != nil {
+		t.Fatalf("new view poller: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err = vp.poll(ctx)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("poll error: want %v, got %v", context.Canceled, err)
+	}
+}
+
 func Test_ViewPollerRemovesMissingIncludeViews(t *testing.T) {
-	client, closeServer := newViewPollerMockClient(
+	client, closeServer := testutil.NewPollerMockClient(
 		t,
 		[]api.View{
 			{
@@ -142,7 +140,7 @@ func Test_ViewPollerRemovesMissingIncludeViews(t *testing.T) {
 }
 
 func Test_ViewPollerDisablesWhenNoIncludeViewsRemain(t *testing.T) {
-	client, closeServer := newViewPollerMockClient(
+	client, closeServer := testutil.NewPollerMockClient(
 		t,
 		[]api.View{
 			{
@@ -188,7 +186,7 @@ func Test_ViewPollerDisablesWhenNoIncludeViewsRemain(t *testing.T) {
 }
 
 func Test_ViewPollerRemoveMissingExcludeViewsWithoutDisable(t *testing.T) {
-	client, closeServer := newViewPollerMockClient(
+	client, closeServer := testutil.NewPollerMockClient(
 		t,
 		[]api.View{
 			{
@@ -236,13 +234,15 @@ func Test_ViewPollerRemoveMissingExcludeViewsWithoutDisable(t *testing.T) {
 
 func Test_ViewPollerKeepPreviousStateOnAPIError(t *testing.T) {
 	status := http.StatusOK
-	client, closeServer := viewPollerMockHandler(
+	client, closeServer := testutil.PollerMockHandler(
 		t,
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(status)
 			if status == http.StatusOK {
-				writeViewPollerViews(
-					t, w, []api.View{
+				testutil.WritePoller(
+					t,
+					w,
+					[]api.View{
 						{
 							Name: "internal",
 						},
@@ -289,7 +289,7 @@ func Test_ViewPollerKeepPreviousStateOnAPIError(t *testing.T) {
 }
 
 func Test_ViewPollerReturnsClone(t *testing.T) {
-	client, closeServer := newViewPollerMockClient(
+	client, closeServer := testutil.NewPollerMockClient(
 		t,
 		[]api.View{
 			{
@@ -325,7 +325,7 @@ func Test_ViewPollerReturnsClone(t *testing.T) {
 }
 
 func Test_ViewPollerStartAlreadyStarted(t *testing.T) {
-	client, closeServer := newViewPollerMockClient(
+	client, closeServer := testutil.NewPollerMockClient(
 		t,
 		[]api.View{
 			{
@@ -348,7 +348,7 @@ func Test_ViewPollerStartAlreadyStarted(t *testing.T) {
 }
 
 func Test_ViewPollerStopAlreadyStopped(t *testing.T) {
-	client, closeServer := newViewPollerMockClient(
+	client, closeServer := testutil.NewPollerMockClient(
 		t,
 		[]api.View{
 			{
@@ -371,7 +371,7 @@ func Test_ViewPollerStopAlreadyStopped(t *testing.T) {
 }
 
 func Test_ViewPollerStartStop(t *testing.T) {
-	client, closeServer := newViewPollerMockClient(
+	client, closeServer := testutil.NewPollerMockClient(
 		t,
 		[]api.View{
 			{
