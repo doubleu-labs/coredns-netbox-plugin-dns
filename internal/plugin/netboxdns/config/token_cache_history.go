@@ -3,13 +3,13 @@ package config
 import (
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/plugin/pkg/log"
-	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/core"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/config"
 )
 
 func init() {
-	core.RegisterToken(
+	config.RegisterToken(
 		&tokensOnce,
-		&tokens,
+		&Tokens,
 		tCacheHistoryName,
 		new(tCacheHistory),
 	)

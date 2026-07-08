@@ -3,13 +3,13 @@ package config
 import (
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/plugin/pkg/log"
-	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/core"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/config"
 )
 
 func init() {
-	core.RegisterToken(
+	config.RegisterToken(
 		&tokensOnce,
-		&tokens,
+		&Tokens,
 		tActiveZoneStatusName,
 		new(tActiveZoneStatus),
 	)
@@ -22,7 +22,7 @@ type tActiveZoneStatus struct{}
 func (tActiveZoneStatus) Parse(c *caddy.Controller, cfg *Config) error {
 	args := c.RemainingArgs()
 	if len(args) == 0 {
-		return core.ErrNoTokenValue(c, tActiveZoneStatusName)
+		return config.ErrNoTokenValue(c, tActiveZoneStatusName)
 	}
 	if len(cfg.ActiveZoneStatus) != 0 {
 		cfg.ActiveZoneStatus = append(cfg.ActiveZoneStatus, args...)

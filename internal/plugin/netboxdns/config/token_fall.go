@@ -7,6 +7,7 @@ import (
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/plugin/pkg/fall"
 	"github.com/coredns/coredns/plugin/pkg/log"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/config"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/core"
 	"github.com/miekg/dns"
 )
@@ -15,15 +16,15 @@ import (
 // plugin in the chain if no records are found.
 
 func init() {
-	core.RegisterToken[Config](
+	config.RegisterToken(
 		&tokensOnce,
-		&tokens,
+		&Tokens,
 		tFallthroughName,
-		&tFallthrough{},
+		new(tFallthrough),
 	)
 }
 
-var tFallthroughName = "fallthrough"
+const tFallthroughName = "fallthrough"
 
 type tFallthrough struct{}
 

@@ -3,7 +3,7 @@ package config
 import (
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/plugin/pkg/log"
-	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/core"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/config"
 )
 
 // Token `noop` configures the plugin to not return any records. Must be used in
@@ -12,15 +12,10 @@ import (
 // but not the core functionality.
 
 func init() {
-	core.RegisterToken[Config](
-		&tokensOnce,
-		&tokens,
-		tNoOpName,
-		&tNoOp{},
-	)
+	config.RegisterToken(&tokensOnce, &Tokens, tNoOpName, new(tNoOp))
 }
 
-var tNoOpName = "noop"
+const tNoOpName = "noop"
 
 type tNoOp struct{}
 

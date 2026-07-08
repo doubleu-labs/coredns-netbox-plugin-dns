@@ -5,28 +5,28 @@ import (
 
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/plugin/pkg/log"
-	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/core"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/config"
 )
 
 // Token `views_exclude` sets the views that will be excluded from API queries.
 
 func init() {
-	core.RegisterToken[Config](
+	config.RegisterToken(
 		&tokensOnce,
-		&tokens,
+		&Tokens,
 		tViewsExcludeName,
-		&tViewsExclude{},
+		new(tViewsExclude),
 	)
 }
 
-var tViewsExcludeName = "views_exclude"
+const tViewsExcludeName = "views_exclude"
 
 type tViewsExclude struct{}
 
 func (tViewsExclude) Parse(c *caddy.Controller, cfg *Config) error {
 	args := c.RemainingArgs()
 	if len(args) == 0 {
-		return core.ErrNoTokenValue(c, tViewsExcludeName)
+		return config.ErrNoTokenValue(c, tViewsExcludeName)
 	}
 	if len(cfg.ViewsExclude) != 0 {
 		cfg.ViewsExclude = append(cfg.ViewsExclude, args...)

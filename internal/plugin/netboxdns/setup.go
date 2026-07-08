@@ -13,9 +13,10 @@ import (
 	"github.com/coredns/coredns/plugin/transfer"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/api"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/cache"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/config"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/core"
 	iplugin "github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/plugin"
-	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/plugin/netboxdns/config"
+	pconfig "github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/plugin/netboxdns/config"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/plugin/netboxdns/poller"
 )
 
@@ -42,7 +43,8 @@ func Register() {
 func setup(c *caddy.Controller) error {
 	logger := log.NewWithPlugin(pluginName)
 
-	cfg, err := config.Parse(c, logger)
+	cfg := new(pconfig.Config)
+	err := config.Parse(c, logger, pconfig.Tokens, &cfg)
 	if err != nil {
 		return plugin.Error(pluginName, err)
 	}
@@ -88,7 +90,7 @@ func setup(c *caddy.Controller) error {
 
 func getServerContext(
 	c *caddy.Controller,
-	cfg *config.Config,
+	cfg *pconfig.Config,
 ) *iplugin.ServerContext {
 	var ctx *iplugin.ServerContext
 	if value, ok := c.Get(iplugin.ContextKey).(*iplugin.ServerContext); ok {
@@ -113,7 +115,7 @@ func getServerContext(
 func setupViewPoller(
 	c *caddy.Controller,
 	n *netboxDNS,
-	cfg *config.Config,
+	cfg *pconfig.Config,
 ) error {
 	if !cfg.ViewPollerEnabled ||
 		(len(n.views.Include) == 0 && len(n.views.Exclude) == 0) {
@@ -154,7 +156,7 @@ func notifyCachedZones(n *netboxDNS) {
 	}
 }
 
-func setupCache(c *caddy.Controller, n *netboxDNS, cfg *config.Config) error {
+func setupCache(c *caddy.Controller, n *netboxDNS, cfg *pconfig.Config) error {
 	if !cfg.ZonePollerEnabled {
 		return nil
 	}
