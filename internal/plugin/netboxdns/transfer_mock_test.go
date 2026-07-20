@@ -2,9 +2,12 @@ package netboxdns
 
 import (
 	"errors"
+	"slices"
 	"testing"
 
+	"github.com/coredns/coredns/plugin/test"
 	"github.com/coredns/coredns/plugin/transfer"
+	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/api"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/cache"
 	"github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/testutil/mock"
 	"github.com/miekg/dns"
@@ -120,5 +123,47 @@ func TestMockTransfer_PropagateUnexpectedCacheError(t *testing.T) {
 	}
 	if ch != nil {
 		t.Fatalf("channel: want nil, got %v", ch)
+	}
+}
+
+func TestMockTransfer_IXFR(t *testing.T) {
+	n := &netboxDNS{
+		zoneCache: cache.NewCache(4),
+	}
+
+	// noinspection LongLine
+	soa90 := test.SOA(
+		"example.com. 86400 IN SOA ns1.example.com. admin.example.com. 90 43200 7200 2419200 3600",
+	)
+	zone90 := &api.Zone{
+		Name:      "example.com.",
+		SOASerial: 90,
+	}
+	rrs90 := []dns.RR{
+		test.A("www.example.com. 3600 IN A 192.168.2.10"),
+	}
+	n.zoneCache.Put(zone90, soa90, rrs90)
+
+	// noinspection LongLine
+	soa91 := test.SOA(
+		"example.com. 86400 IN SOA ns1.example.com. admin.example.com. 91 43200 7200 2419200 3600",
+	)
+	zone91 := &api.Zone{
+		Name:      "example.com.",
+		SOASerial: 91,
+	}
+	rrs91 := []dns.RR{
+		test.A("example.com. 3600 IN A 192.168.2.11"),
+	}
+	n.zoneCache.Put(zone91, soa91, rrs91)
+
+	ch, err := n.Transfer("example.com.", 90)
+	if err != nil {
+		t.Fatalf("transfer error: want nil, got %v", err)
+	}
+
+	var got []dns.RR
+	for batch := range ch {
+		got = slices.Concat(got, batch)
 	}
 }
