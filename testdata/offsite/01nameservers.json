@@ -1,0 +1,10 @@
+[
+  {
+    "name": "ns1.acme.example.com",
+    "description": "Offsite Primary Nameserver"
+  },
+  {
+    "name": "ns2.acme.example.com",
+    "description": "Offsite Secondary Nameserver"
+  }
+]

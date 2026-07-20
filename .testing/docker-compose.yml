@@ -5,9 +5,9 @@ services:
       context: .
       dockerfile: ./netbox.Containerfile
     depends_on:
-    - postgres
-    - redis
-    - redis-cache
+      - postgres
+      - redis
+      - redis-cache
     env_file: env/netbox.env
     healthcheck:
       start_period: 60s
@@ -15,24 +15,24 @@ services:
       interval: 15s
       test: "curl -f http://localhost:8080/login/ || exit 1"
     ports:
-    - "9999:8080"
+      - "9999:8080"
 
   postgres:
-    image: docker.io/library/postgres:17
+    image: docker.io/library/postgres:18
     env_file: env/postgres.env
   
   redis:
-    image: docker.io/valkey/valkey:8.1.1
+    image: docker.io/valkey/valkey:9.1.0
     command:
-    - sh
-    - -c
-    - valkey-server --appendonly yes --requirepass $$REDIS_PASSWORD
+      - sh
+      - -c
+      - valkey-server --appendonly yes --requirepass $$REDIS_PASSWORD
     env_file: env/redis.env
   
   redis-cache:
-    image: docker.io/valkey/valkey:8.1.1
+    image: docker.io/valkey/valkey:9.1.0
     command:
-    - sh
-    - -c
-    - valkey-server --requirepass $$REDIS_PASSWORD
+      - sh
+      - -c
+      - valkey-server --requirepass $$REDIS_PASSWORD
     env_file: env/redis-cache.env

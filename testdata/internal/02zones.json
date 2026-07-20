@@ -1,0 +1,83 @@
+[
+  {
+    "name": "internal.example.com",
+    "description": "Internal Zone",
+    "view": {
+      "name": "internal"
+    },
+    "nameservers": [
+      {
+        "name": "ns1.internal.example.com"
+      },
+      {
+        "name": "ns2.internal.example.com"
+      }
+    ],
+    "default_ttl": 3600,
+    "soa_expire": 2419200,
+    "soa_minimum": 3600,
+    "soa_mname": {
+      "name": "ns1.internal.example.com"
+    },
+    "soa_ttl": 86400,
+    "soa_refresh": 43200,
+    "soa_retry": 7200,
+    "soa_rname": "admin.example.com",
+    "soa_serial_auto": false,
+    "soa_serial": 1
+  },
+  {
+    "name": "3.0.10.in-addr.arpa",
+    "description": "Internal IPv4 Reverse Zone",
+    "view": {
+      "name": "internal"
+    },
+    "nameservers": [
+      {
+        "name": "ns1.internal.example.com"
+      },
+      {
+        "name": "ns2.internal.example.com"
+      }
+    ],
+    "default_ttl": 3600,
+    "soa_expire": 2419200,
+    "soa_minimum": 3600,
+    "soa_mname": {
+      "name": "ns1.internal.example.com"
+    },
+    "soa_ttl": 86400,
+    "soa_refresh": 43200,
+    "soa_retry": 7200,
+    "soa_rname": "admin.example.com",
+    "soa_serial_auto": false,
+    "soa_serial": 1
+  },
+  {
+    "name": "3.0.0.0.0.0.0.0.0.0.0.0.f.e.e.b.d.a.e.d.8.b.d.0.1.0.0.2.ip6.arpa",
+    "description": "Internal IPv6 Reverse Zone",
+    "view": {
+      "name": "internal"
+    },
+    "nameservers": [
+      {
+        "name": "ns1.internal.example.com"
+      },
+      {
+        "name": "ns2.internal.example.com"
+      }
+    ],
+    "default_ttl": 3600,
+    "soa_expire": 2419200,
+    "soa_minimum": 3600,
+    "soa_mname": {
+      "name": "ns1.internal.example.com"
+    },
+    "soa_ttl": 86400,
+    "soa_refresh": 43200,
+    "soa_retry": 7200,
+    "soa_rname": "admin.example.com",
+    "soa_serial_auto": false,
+    "soa_serial": 1
+  }
+]

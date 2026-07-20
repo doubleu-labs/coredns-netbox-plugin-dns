@@ -1,0 +1,82 @@
+[
+  {
+    "zone": {
+      "name": "internal.example.com"
+    },
+    "type": "A",
+    "name": "ns1",
+    "value": "10.0.3.10"
+  },
+  {
+    "zone": {
+      "name": "internal.example.com"
+    },
+    "type": "AAAA",
+    "name": "ns1",
+    "value": "2001:db8:dead:beef::3:10"
+  },
+  {
+    "zone": {
+      "name": "internal.example.com"
+    },
+    "type": "A",
+    "name": "ns2",
+    "value": "10.0.3.11"
+  },
+  {
+    "zone": {
+      "name": "internal.example.com"
+    },
+    "type": "AAAA",
+    "name": "ns2",
+    "value": "2001:db8:dead:beef::3:11"
+  },
+  {
+    "zone": {
+      "name": "internal.example.com"
+    },
+    "type": "SRV",
+    "name": "_x-puppet._tcp",
+    "value": "0 5 8140 puppet1"
+  },
+  {
+    "zone": {
+      "name": "internal.example.com"
+    },
+    "type": "SRV",
+    "name": "_x-puppet._tcp",
+    "value": "0 5 8140 puppet2"
+  },
+  {
+    "zone": {
+      "name": "internal.example.com"
+    },
+    "type": "A",
+    "name": "puppet1",
+    "value": "10.0.3.15"
+  },
+  {
+    "zone": {
+      "name": "internal.example.com"
+    },
+    "type": "AAAA",
+    "name": "puppet1",
+    "value": "2001:db8:dead:beef::3:15"
+  },
+  {
+    "zone": {
+      "name": "internal.example.com"
+    },
+    "type": "A",
+    "name": "puppet2",
+    "value": "10.0.3.16"
+  },
+  {
+    "zone": {
+      "name": "internal.example.com"
+    },
+    "type": "AAAA",
+    "name": "puppet2",
+    "value": "2001:db8:dead:beef::3:16"
+  }
+]

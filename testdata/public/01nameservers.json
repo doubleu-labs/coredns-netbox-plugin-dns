@@ -1,0 +1,18 @@
+[
+  {
+    "name": "ns1.example.com",
+    "description": "Public Primary Nameserver"
+  },
+  {
+    "name": "ns2.example.com",
+    "description": "Public Secondary Nameserver"
+  },
+  {
+    "name": "ns1.sub.example.com",
+    "description": "Public Sub Primary Nameserver"
+  },
+  {
+    "name": "ns2.sub.example.com",
+    "description": "Public Sub Secondary Nameserver"
+  }
+]

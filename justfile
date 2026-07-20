@@ -11,16 +11,20 @@ instance-start: _ensure-podman-sock
         echo "Waiting for Netbox to come online..."; \
         sleep 5; \
     done
-    go run .testing/init/init.go
+    go run .testing/init.go
 
 instance-stop: _ensure-podman-sock
     podman compose {{_compose-common}} down --volumes
 
 test: instance-start
+    rm -f coverage.out
+    go clean -testcache
     go test \
+        -covermode=atomic \
+        -coverpkg=./... \
         -coverprofile=coverage.out \
-        -coverpkg=github.com/doubleu-labs/coredns-netbox-plugin-dns,github.com/doubleu-labs/coredns-netbox-plugin-dns/internal/netbox \
-        .
+        ./... \
+        -run ./...
 
 coverage: test
     go tool cover -html=coverage.out
